@@ -28,9 +28,9 @@ sass:
 email: vigneshsrao5@gmail.com
 twitter: sherl0ck__
 #facebook: username
-#google:
+google:
   #plus: #username
-  #analytics:
+  analytics: UA-123721864-1
   #verify:
   #ad-client:
   #ad-slot:
@@ -59,7 +59,7 @@ linkedin: vigneshsrao
 
 
 # Comments
-disqus_shortname: alperenbozkurt-net
+disqus_shortname: sherl0ck
 
 tag_page: '/blog/tag/'
 
