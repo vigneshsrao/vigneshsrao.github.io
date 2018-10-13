@@ -6,12 +6,12 @@
     <meta http-equiv=X-UA-Compatible content="IE=edge,chrome=1">
     <meta name=viewport content="width=device-width, initial-scale=1">
     <title>InCTF: lost Writeup &#8211; sherl0ck's home</title>
-    <meta name="description" content="U">
+    <meta name="description" content="Race condition to get heap overflow. Use fastbin dup with heap extension to overwrite GOT">
     <meta name="keywords" content="writeup, fastbin, heap, race-condition">
     <link rel="canonical" href="http://localhost:4000/lost/">
         <!-- Twitter Cards -->
     <meta name="twitter:title" content="InCTF: lost Writeup">
-    <meta name="twitter:description" content="U">
+    <meta name="twitter:description" content="Race condition to get heap overflow. Use fastbin dup with heap extension to overwrite GOT">
     <meta name="twitter:site" content="@sherl0ck__">
     <meta name="twitter:creator" content="@sherl0ck__">
     <meta name="twitter:card" content="summary">
@@ -20,7 +20,7 @@
     <meta property="og:locale" content="en_US">
     <meta property="og:type" content="article">
     <meta property="og:title" content="InCTF: lost Writeup">
-    <meta property="og:description" content="U">
+    <meta property="og:description" content="Race condition to get heap overflow. Use fastbin dup with heap extension to overwrite GOT">
     <meta property="og:url" content="http://localhost:4000/lost/">
     <meta property="og:site_name" content="sherl0ck's home">
     <meta property="og:image" content="http://localhost:4000/assets/img/profile.png">
@@ -95,19 +95,19 @@
       <ul class="menu">
             
 				    
-				    <li><a class="link" href="http://localhost:4000/" >Home</a></li>
+				    <li><a class="link" href="http://localhost:4000" >Home</a></li>
 				
 				    
-				    <li><a class="link" href="http://localhost:4000/blog/" >Blog</a></li>
+				    <li><a class="link" href="http://localhost:4000blog/" >Blog</a></li>
 				
 				    
-				    <li><a class="link" href="http://localhost:4000/projects/" >Projects</a></li>
+				    <li><a class="link" href="http://localhost:4000projects/" >Projects</a></li>
 				
 				    
-				    <li><a class="link" href="http://localhost:4000/about/" >About</a></li>
+				    <li><a class="link" href="http://localhost:4000about/" >About</a></li>
 				
 				    
-				    <li><a class="link" href="http://localhost:4000/resume.pdf" >Resume</a></li>
+				    <li><a class="link" href="http://localhost:4000resume.pdf" >Resume</a></li>
 				
         </ul>
     </nav>
@@ -124,19 +124,19 @@
         <ul class="menuAna">
             
 				    
-				    <li class="item"><a class="link" href="http://localhost:4000/" >Home</a></li>
+				    <li class="item"><a class="link" href="http://localhost:4000" >Home</a></li>
 				
 				    
-				    <li class="item"><a class="link" href="http://localhost:4000/blog/" >Blog</a></li>
+				    <li class="item"><a class="link" href="http://localhost:4000blog/" >Blog</a></li>
 				
 				    
-				    <li class="item"><a class="link" href="http://localhost:4000/projects/" >Projects</a></li>
+				    <li class="item"><a class="link" href="http://localhost:4000projects/" >Projects</a></li>
 				
 				    
-				    <li class="item"><a class="link" href="http://localhost:4000/about/" >About</a></li>
+				    <li class="item"><a class="link" href="http://localhost:4000about/" >About</a></li>
 				
 				    
-				    <li class="item"><a class="link" href="http://localhost:4000/resume.pdf" >Resume</a></li>
+				    <li class="item"><a class="link" href="http://localhost:4000resume.pdf" >Resume</a></li>
 				
         </ul>
     </nav>
@@ -161,13 +161,13 @@
               
               <i class="fa fa-tags" float=right></i>
               
-              <a href="/blog/tag/#writeup"   class="post-tag">writeup</a>
+              <a href="blog/tag/#writeup"   class="post-tag">writeup</a>
               
-              <a href="/blog/tag/#fastbin"   class="post-tag">fastbin</a>
+              <a href="blog/tag/#fastbin"   class="post-tag">fastbin</a>
               
-              <a href="/blog/tag/#heap"   class="post-tag">heap</a>
+              <a href="blog/tag/#heap"   class="post-tag">heap</a>
               
-              <a href="/blog/tag/#race-condition"   class="post-tag">race-condition</a>
+              <a href="blog/tag/#race-condition"   class="post-tag">race-condition</a>
               
               
             </div>
