@@ -1,16 +1,16 @@
 # Site navigation links
 
 - title: Home
-  url: 
+  url: / 
 
 - title: Blog
-  url: blog/
+  url: /blog/
 
 - title: Projects
-  url: projects/
+  url: /projects/
 
 - title: About
-  url: about/
+  url: /about/
 
 - title: Resume
-  url: resume.pdf
+  url: /resume.pdf
