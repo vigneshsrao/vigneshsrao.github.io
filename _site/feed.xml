@@ -1,4 +1,169 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.7.3">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2018-10-13T18:28:26+05:30</updated><id>http://localhost:4000/</id><title type="html">sherl0ck’s home</title><subtitle></subtitle><entry><title type="html">InCTF: lost Writeup</title><link href="http://localhost:4000/lost/" rel="alternate" type="text/html" title="InCTF: lost Writeup" /><published>2018-10-12T00:00:00+05:30</published><updated>2018-10-12T00:00:00+05:30</updated><id>http://localhost:4000/lost</id><content type="html" xml:base="http://localhost:4000/lost/">&lt;p&gt;&lt;strong&gt;Attachments&lt;/strong&gt;: &lt;a href=&quot;/assets/img/lost/lost&quot;&gt;binary&lt;/a&gt;     &lt;a href=&quot;/assets/img/lost/libc.so.6&quot;&gt;libc&lt;/a&gt;     &lt;a href=&quot;/assets/img/lost/lost.c&quot;&gt;source&lt;/a&gt;&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.7.3">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2018-10-25T03:25:30+05:30</updated><id>http://localhost:4000/</id><title type="html">sherl0ck’s home</title><subtitle></subtitle><entry><title type="html">HITCON CTF: baby_tcache Writeup</title><link href="http://localhost:4000/babytcache/" rel="alternate" type="text/html" title="HITCON CTF: baby_tcache Writeup" /><published>2018-10-25T00:00:00+05:30</published><updated>2018-10-25T00:00:00+05:30</updated><id>http://localhost:4000/babytcache</id><content type="html" xml:base="http://localhost:4000/babytcache/">&lt;p&gt;&lt;strong&gt;Attachments&lt;/strong&gt;: &lt;a href=&quot;/assets/img/baby_tcache/baby_tcache&quot;&gt;binary&lt;/a&gt;     &lt;a href=&quot;/assets/img/baby_tcache/libc.so.6&quot;&gt;libc&lt;/a&gt;     &lt;a href=&quot;/assets/img/baby_tcache/exploit.py&quot;&gt;exploit&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;This was a really fun challenge created by angelboy for HITCON CTF 2018. The following will be a writeup for the intended solution as gathered from the &lt;a href=&quot;https://github.com/scwuaptx/CTF/blob/master/2018-writeup/hitcon/baby_tcache.py&quot;&gt;exploit script&lt;/a&gt; that &lt;a href=&quot;https://twitter.com/scwuaptx&quot;&gt;angelboy&lt;/a&gt; uploaded.&lt;/p&gt;
+
+&lt;p class=&quot;notice&quot;&gt;&lt;strong&gt;Note:&lt;/strong&gt; During the CTF we solved this challenge in a really impractical way (brute-forcing 12 bit’s of libc address to get to &lt;code class=&quot;highlighter-rouge&quot;&gt;__free_hook&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;one_gadget&lt;/code&gt;). The intended solution is really pretty cool as it involves getting a leak which looked impossible at the start.&lt;/p&gt;
+
+&lt;p&gt;So, the binary that was provided was a stripped ELF 64 bit using libc version 2.27. The specialty of this version of libc is that, it implements the &lt;code class=&quot;highlighter-rouge&quot;&gt;tcache&lt;/code&gt; concept that is used to cache free chunks in the heap before adding them to the libc freelist. Here are the mitigations enforced.&lt;/p&gt;
+
+&lt;div class=&quot;language-javascript highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  &lt;span class=&quot;nx&quot;&gt;gdb&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;peda$&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;checksec&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;CANARY&lt;/span&gt;    &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;ENABLED&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;FORTIFY&lt;/span&gt;   &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;ENABLED&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;NX&lt;/span&gt;        &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;ENABLED&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;PIE&lt;/span&gt;       &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;ENABLED&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;RELRO&lt;/span&gt;     &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;FULL&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h2 id=&quot;reversing&quot;&gt;Reversing&lt;/h2&gt;
+
+&lt;p&gt;Reversing this binary is pretty easy. There are only 2 functionalities&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;new_heap:&lt;/strong&gt; mallocs a chunk of user specified size and reads data into it. It then adds this chunk into a global array (lets call it &lt;code class=&quot;highlighter-rouge&quot;&gt;table&lt;/code&gt;) and the size into another global array (say &lt;code class=&quot;highlighter-rouge&quot;&gt;size_arr&lt;/code&gt;).&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;delete_heap:&lt;/strong&gt; memsets &lt;code class=&quot;highlighter-rouge&quot;&gt;size&lt;/code&gt; bytes of the chunk with the byte 0xda and then frees the chunk.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;vulnerability&quot;&gt;Vulnerability&lt;/h2&gt;
+
+&lt;p&gt;In the &lt;code class=&quot;highlighter-rouge&quot;&gt;new_heap&lt;/code&gt; function, after reading &lt;code class=&quot;highlighter-rouge&quot;&gt;size&lt;/code&gt; bytes of input from the user, chunk[size] is set to zero. This leads to a null-byte overflow in the &lt;code class=&quot;highlighter-rouge&quot;&gt;size&lt;/code&gt; field of the next chunk if &lt;code class=&quot;highlighter-rouge&quot;&gt;size&lt;/code&gt; corresponds to the exact size of the heap chunk.&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Data:&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;getinp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v6&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;v6&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// Null byte overflow
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;table&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v6&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;v3&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;size_array&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Thus we can use this to set the &lt;code class=&quot;highlighter-rouge&quot;&gt;PREV_IN_USE&lt;/code&gt; bit of the next chunk to zero and achieve backward coalescing somewhat like what happens in House of Einherjar.&lt;/p&gt;
+
+&lt;p&gt;The main issue is that there is no way to get a leak. There is no convenient &lt;code class=&quot;highlighter-rouge&quot;&gt;view&lt;/code&gt; functionality that we can use to get a leak. Thus we have to resort to partial overwrites, at least until we manage to get a leak (yes, though it seems stunning, we will get a leak :D)&lt;/p&gt;
+
+&lt;h2 id=&quot;exploit&quot;&gt;Exploit&lt;/h2&gt;
+
+&lt;p&gt;Before actually starting off with pwning this binary, a quick note about &lt;code class=&quot;highlighter-rouge&quot;&gt;tcache&lt;/code&gt;. This was a new feature introduced in glibc version 2.27 and above. Now all heap chunks of size &amp;lt; 0x410 are treated as tcache chunks. When these are freed, they go into their respective tcache bins (a singly linked list). Each bin can hold upto 7 chunks, after which chunks are freed as they were traditionally. So all chunks of size &amp;lt; 0x410 can be thought of as fastbin chunks. But the interesting part is that, unlike fastbin chunks tcache has &lt;strong&gt;no&lt;/strong&gt; security checks in place. Thus we can double free pointers and malloc sizes without &lt;strong&gt;any&lt;/strong&gt; size checks.&lt;/p&gt;
+
+&lt;p&gt;Getting back to this challenge, our plan can be to achieve a backward coalescing. But since we don’t have any leaks, we will have to use a previously freed chunk as a target in our coalescing. So first, lets malloc a chunk of size &amp;gt; 0x410 so that we have unsorted bin pointer in the chunk. Assume we have a heap structure like this -&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  chunk 0   # size = 0x500  =&amp;gt; Target for backward coalescing of chunk 5. This will contain unsortedbin pointers
+ ----------
+  chunk 1   # size = 0x40   --+
+ ----------                   |
+  chunk 2   # size = 0x50     |==&amp;gt; Random tcache chunks
+ ----------                   |
+  chunk 3   # size = 0x60     |
+ ----------                 --+
+  chunk 4   # size = 0x70 =&amp;gt; Use this for null byte overwrite of next size
+ ----------
+  chunk 5   # size = 0x500 =&amp;gt; overwrite PREV_IN_USE of this chunk
+ ----------
+  chunk 6   # size = 0x80 =&amp;gt; for preventing merge with topchunk
+ ----------
+
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;For overwriting the &lt;code class=&quot;highlighter-rouge&quot;&gt;PREV_IN_USE&lt;/code&gt; of chunk 5, free and reallocate chunk 4 with size 0x68 and set the &lt;code class=&quot;highlighter-rouge&quot;&gt;PREV_SIZE&lt;/code&gt; so as to correspond with chunk 0 (PREV_SIZE = 0x660). After freeing chunk 5, chunk 0 will be a huge chunk with which we can overwrite the tcache chunks we created.&lt;/p&gt;
+
+&lt;p&gt;So how can we get arbitrary write from this? Well lets free chunk 2 and allocate 0x500+0x40=0x540 bytes. Thus we have unsorted bin pointer as &lt;code class=&quot;highlighter-rouge&quot;&gt;fd&lt;/code&gt; of a tcache chunk. Now we allocate a chunk of any size, such that it gets serviced from the unsorted bin and overwrite the LSB of the unsorted bin pointer to point to some place we want within the libc. Note that the last three nibbles are constant, irrespective of ASLR. So to change the last 2 bytes, we have to use 4 bit bruteforce.&lt;/p&gt;
+
+&lt;p&gt;Now our aim is to get a leak. We’ll take a diversion now and start looking into the internals of &lt;code class=&quot;highlighter-rouge&quot;&gt;puts&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;puts&lt;/code&gt; internally calls &lt;code class=&quot;highlighter-rouge&quot;&gt;_IO_new_file_xsputn&lt;/code&gt; which eventually calls &lt;code class=&quot;highlighter-rouge&quot;&gt;_IO_OVERFLOW&lt;/code&gt;&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;
+&lt;span class=&quot;nf&quot;&gt;_IO_new_file_overflow&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_IO_FILE&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ch&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_flags&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_IO_NO_WRITES&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;cm&quot;&gt;/* SET ERROR */&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_flags&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_IO_ERR_SEEN&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;__set_errno&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;EBADF&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;EOF&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;cm&quot;&gt;/* If currently reading or no buffer allocated. */&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_flags&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_IO_CURRENTLY_PUTTING&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_IO_write_base&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;NULL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;
+      &lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ch&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;EOF&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_IO_do_write&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_IO_write_base&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;  &lt;span class=&quot;c1&quot;&gt;// our target
+&lt;/span&gt;			 &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_IO_write_ptr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_IO_write_base&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;We see that &lt;code class=&quot;highlighter-rouge&quot;&gt;_IO_do_write&lt;/code&gt; is called eventually in this function. For this &lt;code class=&quot;highlighter-rouge&quot;&gt;stdout-&amp;gt;_flags &amp;amp; _IO_NO_WRITES&lt;/code&gt; should be zero. Also we set &lt;code class=&quot;highlighter-rouge&quot;&gt;stdout-&amp;gt;_flags &amp;amp; _IO_CURRENTLY_PUTTING&lt;/code&gt; to avoid some unnecessary (in our case) code.&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;_IO_new_file_overflow&lt;/code&gt; calls &lt;code class=&quot;highlighter-rouge&quot;&gt;_IO_do_write&lt;/code&gt; with arguments as &lt;code class=&quot;highlighter-rouge&quot;&gt;stdout&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;stdout-&amp;gt;_IO_write_base&lt;/code&gt; and size of the buffer.&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;_IO_do_write&lt;/code&gt; calls &lt;code class=&quot;highlighter-rouge&quot;&gt;new_do_write&lt;/code&gt; with same arguments.&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;static&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;_IO_size_t&lt;/span&gt;
+&lt;span class=&quot;nf&quot;&gt;new_do_write&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_IO_FILE&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_IO_size_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;to_do&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;_IO_size_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_flags&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_IO_IS_APPENDING&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;cm&quot;&gt;/* On a system without a proper O_APPEND implementation,
+       you would need to sys_seek(0, SEEK_END) here, but is
+       not needed nor desirable for Unix- or Posix-like systems.
+       Instead, just indicate that offset (before and after) is
+       unpredictable. */&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;fp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_offset&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_IO_pos_BAD&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_IO_read_end&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_IO_write_base&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;_IO_off64_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;new_pos&lt;/span&gt;
+	&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_IO_SYSSEEK&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_IO_write_base&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_IO_read_end&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;new_pos&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_IO_pos_BAD&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+	&lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;fp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_offset&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;new_pos&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_IO_SYSWRITE&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;to_do&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// Our aim
+&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;_IO_SYSWRITE&lt;/code&gt; is basically &lt;code class=&quot;highlighter-rouge&quot;&gt;write(fp-&amp;gt;fileno, data, to_do)&lt;/code&gt; which is what we want. Also &lt;code class=&quot;highlighter-rouge&quot;&gt;_IO_SYSSEEK&lt;/code&gt; is basically just a call to &lt;code class=&quot;highlighter-rouge&quot;&gt;lseek&lt;/code&gt; on the given file with the given arguments. The issue is that we don’t exactly control &lt;code class=&quot;highlighter-rouge&quot;&gt;fp-&amp;gt;_IO_write_base - fp-&amp;gt;_IO_read_end&lt;/code&gt;. If we set &lt;code class=&quot;highlighter-rouge&quot;&gt;stdout-&amp;gt;_IO_read_end&lt;/code&gt; to zero, then the second argument is too long, and is we set &lt;code class=&quot;highlighter-rouge&quot;&gt;stdout-&amp;gt;_IO_write_base&lt;/code&gt; &amp;gt; &lt;code class=&quot;highlighter-rouge&quot;&gt;stdout-&amp;gt;_IO_read_end&lt;/code&gt; we’ll have issues elsewhere, owing to &lt;code class=&quot;highlighter-rouge&quot;&gt;_IO_write_base&lt;/code&gt; becomming greater than &lt;code class=&quot;highlighter-rouge&quot;&gt;_IO_write_ptr&lt;/code&gt;. Thus our only option is to skip the &lt;code class=&quot;highlighter-rouge&quot;&gt;else if&lt;/code&gt; block. For this we have to set &lt;code class=&quot;highlighter-rouge&quot;&gt;stdout-&amp;gt;_flags &amp;amp; _IO_IS_APPENDING&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;Therefore to get to &lt;code class=&quot;highlighter-rouge&quot;&gt;_IO_SYSWRITE&lt;/code&gt;, we need to set the flags in the following manner&lt;/p&gt;
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;_flags&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0xfbad0000&lt;/span&gt;  &lt;span class=&quot;c1&quot;&gt;// Magic number
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_flags&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;~&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_IO_NO_WRITES&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// _flags = 0xfbad0000
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_flags&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_IO_CURRENTLY_PUTTING&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// _flags = 0xfbad0800
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_flags&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_IO_IS_APPENDING&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// _flags = 0xfbad1800
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;By the way did you notice the second argument of &lt;code class=&quot;highlighter-rouge&quot;&gt;_IO_do_write&lt;/code&gt;? It’s &lt;code class=&quot;highlighter-rouge&quot;&gt;_IO_write_base&lt;/code&gt; which is eventually the second argument for &lt;code class=&quot;highlighter-rouge&quot;&gt;write&lt;/code&gt;. Thus we can leak data from &lt;code class=&quot;highlighter-rouge&quot;&gt;stdout-&amp;gt;_IO_write_base&lt;/code&gt;!&lt;/p&gt;
+
+&lt;p&gt;Now all we have to do is to set &lt;code class=&quot;highlighter-rouge&quot;&gt;stdout-&amp;gt;_flags&lt;/code&gt; to the value we calculated and partial overwrite &lt;code class=&quot;highlighter-rouge&quot;&gt;stdout-&amp;gt;_IO_write_base&lt;/code&gt; so as to point it to somewhere to get a leak.&lt;/p&gt;
+
+&lt;p&gt;So we overwrite the &lt;code class=&quot;highlighter-rouge&quot;&gt;fd&lt;/code&gt; of our free tcache chunk to point to &lt;code class=&quot;highlighter-rouge&quot;&gt;stdout-&amp;gt;_flags&lt;/code&gt;. Here we will hardcode the last 2 bytes. The last 3 nibbles are constant anyway so we only need to bruteforce the fourth last nibble (4-bit bruteforce). Now we allocate a junk chunk and then chunk after that will lie in our desired region. Keep in mind that there are no size checks here, so the lack of the chunk size in the target location does not cause an issue.&lt;/p&gt;
+
+&lt;p&gt;We overwrite &lt;code class=&quot;highlighter-rouge&quot;&gt;_flags&lt;/code&gt; with the calculated value and &lt;code class=&quot;highlighter-rouge&quot;&gt;_IO_read_ptr&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;_IO_read_end&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;_IO_read_base&lt;/code&gt; with NULL and the last byte of &lt;code class=&quot;highlighter-rouge&quot;&gt;_IO_write_base&lt;/code&gt; with NULL as well.&lt;/p&gt;
+
+&lt;p&gt;Heres how &lt;code class=&quot;highlighter-rouge&quot;&gt;stdout&lt;/code&gt; looked after the overwrite&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;gdb-peda$ x/28xg 0x00007ffff7dd0760
+0x7ffff7dd0760 &amp;lt;_IO_2_1_stdout_&amp;gt;:       0x00000000fbad1800      0x0000000000000000
+0x7ffff7dd0770 &amp;lt;_IO_2_1_stdout_+16&amp;gt;:    0x0000000000000000      0x0000000000000000
+0x7ffff7dd0780 &amp;lt;_IO_2_1_stdout_+32&amp;gt;:    0x00007ffff7dd0700      0x00007ffff7dd07e3
+0x7ffff7dd0790 &amp;lt;_IO_2_1_stdout_+48&amp;gt;:    0x00007ffff7dd07e3      0x00007ffff7dd07e3
+0x7ffff7dd07a0 &amp;lt;_IO_2_1_stdout_+64&amp;gt;:    0x00007ffff7dd07e4      0x0000000000000000
+0x7ffff7dd07b0 &amp;lt;_IO_2_1_stdout_+80&amp;gt;:    0x0000000000000000      0x0000000000000000
+0x7ffff7dd07c0 &amp;lt;_IO_2_1_stdout_+96&amp;gt;:    0x0000000000000000      0x00007ffff7dcfa00
+0x7ffff7dd07d0 &amp;lt;_IO_2_1_stdout_+112&amp;gt;:   0x0000000000000001      0xffffffffffffffff
+0x7ffff7dd07e0 &amp;lt;_IO_2_1_stdout_+128&amp;gt;:   0x000000000a000000      0x00007ffff7dd18c0
+0x7ffff7dd07f0 &amp;lt;_IO_2_1_stdout_+144&amp;gt;:   0xffffffffffffffff      0x0000000000000000
+0x7ffff7dd0800 &amp;lt;_IO_2_1_stdout_+160&amp;gt;:   0x00007ffff7dcf8c0      0x0000000000000000
+0x7ffff7dd0810 &amp;lt;_IO_2_1_stdout_+176&amp;gt;:   0x0000000000000000      0x0000000000000000
+0x7ffff7dd0820 &amp;lt;_IO_2_1_stdout_+192&amp;gt;:   0x00000000ffffffff      0x0000000000000000
+0x7ffff7dd0830 &amp;lt;_IO_2_1_stdout_+208&amp;gt;:   0x0000000000000000      0x00007ffff7dcc2a0
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;In the above structure, &lt;code class=&quot;highlighter-rouge&quot;&gt;_IO_write_base&lt;/code&gt; = &lt;code class=&quot;highlighter-rouge&quot;&gt;0x00007ffff7dd0700&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;_IO_write_ptr&lt;/code&gt; = &lt;code class=&quot;highlighter-rouge&quot;&gt;0x00007ffff7dd07e3&lt;/code&gt;. So we’ll leak lot of memory in which we are sure to get a libc leak :).&lt;/p&gt;
+
+&lt;p&gt;Once we get the libc leak, exploitation is trivial. We just free another tcache chunk and overwrite its &lt;code class=&quot;highlighter-rouge&quot;&gt;fd&lt;/code&gt; with a pointer to &lt;code class=&quot;highlighter-rouge&quot;&gt;__free_hook&lt;/code&gt;. Then after 1 allocation of chunks in that tcache bin, we get a allocation at &lt;code class=&quot;highlighter-rouge&quot;&gt;__free_hook&lt;/code&gt; and overwrite that with a &lt;a href=&quot;https://github.com/david942j/one_gadget&quot;&gt;one_gadget&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;After this we just call &lt;code class=&quot;highlighter-rouge&quot;&gt;free&lt;/code&gt; with the &lt;code class=&quot;highlighter-rouge&quot;&gt;delete_heap&lt;/code&gt; functionality to get shell!&lt;/p&gt;
+
+&lt;p&gt;We’ll have to run the exploit several times until our bruteforce pays off.&lt;/p&gt;
+
+&lt;p&gt;The flag was&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;hitcon{He4p_ch41leng3s_4r3_n3v3r_d34d_XD}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;My team (bi0s) stood 26 in this CTF. We had an awesome time trying out the challenges. Shout out to the HITCON team for organizing this CTF!&lt;/p&gt;</content><author><name></name></author><category term="writeup" /><category term="tcache" /><category term="heap" /><category term="filestructure" /><summary type="html">Allocate chunk in stdout-&gt;_flags and partial overwrite _IO_write_base to get leak.</summary></entry><entry><title type="html">InCTF: lost Writeup</title><link href="http://localhost:4000/lost/" rel="alternate" type="text/html" title="InCTF: lost Writeup" /><published>2018-10-12T00:00:00+05:30</published><updated>2018-10-12T00:00:00+05:30</updated><id>http://localhost:4000/lost</id><content type="html" xml:base="http://localhost:4000/lost/">&lt;p&gt;&lt;strong&gt;Attachments&lt;/strong&gt;: &lt;a href=&quot;/assets/img/lost/lost&quot;&gt;binary&lt;/a&gt;     &lt;a href=&quot;/assets/img/lost/libc.so.6&quot;&gt;libc&lt;/a&gt;     &lt;a href=&quot;/assets/img/lost/lost.c&quot;&gt;source&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;The binary is a 64-bit ELF, non-stripped. Here are the mitigation’s enforced.&lt;/p&gt;
 &lt;div class=&quot;language-javascript highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  &lt;span class=&quot;nx&quot;&gt;gdb&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;peda$&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;checksec&lt;/span&gt;
