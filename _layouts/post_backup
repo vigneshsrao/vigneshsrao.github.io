@@ -49,10 +49,6 @@
     <div class="menuMobil">
       {% include nav-home.html %}
     </div>
-    <!-- <div class="sidenav"> -->
-    <!-- </div> -->
-
-    <!-- <div class="asdf"> -->
     <div class="ust">
       <div class="ortalaAna">
         <div class="baslikAna">
@@ -64,8 +60,6 @@
         </div>
       </div>
     </div>
-  <!-- </div> -->
-
     <div class="ortalaAna">
       <div class="yazilar">
         <div class="yazi">
@@ -87,25 +81,7 @@
               {% endfor %}
               {% endif %}
             </div>
-
-            <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
-
-            <!-- <div class="sidenav"> -->
-            <!-- <div class="notice"> -->
-
-            <nav class="toc">
-            <header>
-            <h2 class="nav__title">
-            <i class="fas fa-file-alt"> Contents</i>
-            </h2>
-            </header>
-            <!-- <div id="markdown-toc"> -->
-            {% include toc.html html=content %}
-            <!-- </div> -->
-            </nav>
-            <!-- </div> -->
             {{ content }}
-
             <!-- {% if page.previous %}
             <a href="{{ site.BASE_PATH }}{{ page.previous.url }}" title="{{ page.previous.title }}" class="btn btn-info">&larr; Previous</a>
             {% endif %}
