@@ -3,7 +3,7 @@ layout: "post"
 title: "Playing around with SpiderMonkey"
 date: 2019-01-09
 excerpt: "Some random notes about Mozilla's JavaScript engine"
-tags: [js engine, browser]
+tags: [js engine, browser, spidermonkey]
 description:
 ---
 
@@ -165,7 +165,74 @@ I did not fully understand the requirement and the use of the `group_` member bu
 >    The \|group\_\| member stores the group of the object, which contains its prototype object, its class and the possible types of its properties.
 
 
-I would be glad if anyone could explain more about this field.
+~I would be glad if anyone could explain more about this field.~ (Updated now)
+
+The `group_` member is essentially a member of the `ObjectGroup` class, with the following members.
+
+```cpp
+    /* Class shared by objects in this group. */
+    const Class* clasp_; // set by constructor
+
+    /* Prototype shared by objects in this group. */
+    GCPtr<TaggedProto> proto_; // set by constructor
+
+    /* Realm shared by objects in this group. */
+    JS::Realm* realm_;; // set by constructor
+
+    /* Flags for this group. */
+    ObjectGroupFlags flags_; // set by constructor
+
+    // If non-null, holds additional information about this object, whose
+    // format is indicated by the object's addendum kind.
+    void* addendum_ = nullptr;
+
+    Property** propertySet = nullptr;
+```
+
+The comments more or less explain the use of each of the fields, but let me just go into the `clasp_` member as it provides interesting targets for exploitation.
+
+Like the comments says, this defines the JSClass that is shared by all objects that belong to this group and can be used to identify this group. Let's take a look at the `Class` structure.
+
+```cpp
+
+struct MOZ_STATIC_CLASS Class
+{
+    JS_CLASS_MEMBERS(js::ClassOps, FreeOp);
+    const ClassSpec* spec;
+    const ClassExtension* ext;
+    const ObjectOps* oOps;
+    :
+    :
+}
+```
+
+I did not understand much of the other properties except the `ClassOps`, but I'll update it here once I do. `ClassOps` is basically a pointer to a structure that holds a number of function pointers that define how specific operations on an object take place (!? Lol, don't worry, example coming right up!). Let's take a look at this `ClassOps` structure
+
+```cpp
+
+struct MOZ_STATIC_CLASS ClassOps
+{
+    /* Function pointer members (may be null). */
+    JSAddPropertyOp     addProperty;
+    JSDeletePropertyOp  delProperty;
+    JSEnumerateOp       enumerate;
+    JSNewEnumerateOp    newEnumerate;
+    JSResolveOp         resolve;
+    JSMayResolveOp      mayResolve;
+    FinalizeOp          finalize;
+    JSNative            call;
+    JSHasInstanceOp     hasInstance;
+    JSNative            construct;
+    JSTraceOp           trace;
+};
+```
+
+For example the function pointer in the `addProperty` field, defines which function is to be called when a new property is called. This is all explained pretty nicely in [this post](https://doar-e.github.io/blog/2018/11/19/introduction-to-spidermonkey-exploitation/). Its a really great article especially for someone starting out with SpiderMonkey exploitation and the author explains everything from scratch. So back to the point, we basically have an array of function pointers here. If we manage to overwrite any of them, we can convert an arbitrary write into arbitrary code execution.
+
+But wait its not that easy. The thing is that this region which contains the function pointers is an `r-x` region (no write access). But, provided that we have arbitrary write, we can easily fake the entire `ClassOps` structure and overwrite the pointer to the actual `ClassOps` in the `group` field with a pointer to our fake structure.
+
+Thus we have here a means to get code execution provided we have arbitrary write. This will be handy later!
+
 
 #### shape\_ and slots\_
 
