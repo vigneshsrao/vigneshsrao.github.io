@@ -113,6 +113,10 @@
     </nav>
 
     </div>
+    <!-- <div class="sidenav"> -->
+    <!-- </div> -->
+
+    <!-- <div class="asdf"> -->
     <div class="ust">
       <div class="ortalaAna">
         <div class="baslikAna">
@@ -144,6 +148,8 @@
         </div>
       </div>
     </div>
+  <!-- </div> -->
+
     <div class="ortalaAna">
       <div class="yazilar">
         <div class="yazi">
@@ -161,14 +167,34 @@
               
               <i class="fa fa-tags" float=right></i>
               
-              <a href="blog/tag/#heap"   class="post-tag">heap</a>
+              <a href="/blog/tag/#heap"   class="post-tag">heap</a>
               
-              <a href="blog/tag/#fastbin"   class="post-tag">fastbin</a>
+              <a href="/blog/tag/#fastbin"   class="post-tag">fastbin</a>
               
-              <a href="blog/tag/#method"   class="post-tag">method</a>
+              <a href="/blog/tag/#method"   class="post-tag">method</a>
               
               
             </div>
+
+            <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
+
+            <!-- <div class="sidenav"> -->
+            <!-- <div class="notice"> -->
+
+            <nav class="toc">
+            <header>
+            <h2 class="nav__title">
+            <i class="fas fa-file-alt"> Contents</i>
+            </h2>
+            </header>
+            <!-- <div id="markdown-toc"> -->
+            <ul>
+  <li><a href="#credits">Credits:</a></li>
+</ul>
+
+            <!-- </div> -->
+            </nav>
+            <!-- </div> -->
             <p>This post will demonstrate an alternate way to exploit the House of Orange scenario which was originally shown by 4ngelboy. It involves using fastbin corruption on the old top chunk to allocate a chunk at an arbitrary location, thus achieving a write-what-where primitive.  The premises are same as that of House of Orange –</p>
 
 <ul>
@@ -185,7 +211,8 @@
 
 <p>The proof of concept that this post will be following can be found <a target="_blank" rel="noopener noreferrer" href="https://www.github.com/vigneshsrao/Concepts/blob/master/fastbin_orange/fastbin_orange.c">here</a>.</p>
 
-<figure class="highlight"><pre><code class="language-c" data-lang="c"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+<figure class="highlight">
+  <pre><code class="language-c" data-lang="c"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
 <span class="p">{</span>
     <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">target</span><span class="o">=</span><span class="mh">0x51</span><span class="p">;</span>
     <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">"target @ %p</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">target</span><span class="p">);</span>
@@ -204,7 +231,8 @@
     <span class="n">malloc</span><span class="p">(</span><span class="mh">0x50</span><span class="o">-</span><span class="mi">16</span><span class="p">);</span>
 
     <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="s">"new chunk @ %p</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">malloc</span><span class="p">(</span><span class="mh">0x50</span><span class="o">-</span><span class="mi">16</span><span class="p">));</span>
-<span class="p">}</span></code></pre></figure>
+<span class="p">}</span></code></pre>
+</figure>
 
 <p>We start with the assumption that the target location is known. This can be a GOT address, malloc_hook, free_hook, a stack location etc. We will take the target location as a stack variable. Also, for this particular PoC, we will be allocating a chunk of size 0x50, but in general, a chunk of any size in the fastbin range can be allocated. Since we will finally be performing a fastbin dup, we need that the size of the chunk is written near our target location.</p>
 
@@ -255,6 +283,7 @@ The normal page size on Linux is 4kB (0x1000 bytes). Also, whenever a chunk is a
   <li><a href="http://4ngelboy.blogspot.com/2016/10/hitcon-ctf-qual-2016-house-of-orange.html">Angelboy’s blog post</a> on House of Orange.</li>
   <li><a href="https://github.com/shellphish/how2heap/blob/master/glibc_2.25/house_of_orange.c">House of Orange PoC</a> in Shellphish’s <a href="https://github.com/shellphish/how2heap">how2heap</a> repository.</li>
 </ul>
+
 
             <!-- 
             <a href="/findfile/" title="FindFile" class="btn btn-info">&larr; Previous</a>
@@ -355,7 +384,7 @@ $(document).ready(function(){
         <div class="footer">
       <div class="ortalaAna">
         <div class="copy">
-          sherl0ck's home © 2018
+          sherl0ck's home © 2019
         </div>
         <div class="sosyal">
                         <div class="social-links">

@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+    <meta http-equiv=X-UA-Compatible content="IE=edge,chrome=1">
+    <meta name=viewport content="width=device-width, initial-scale=1">
+    <title>InCTF ateles Write-up &#8211; sherl0ck's home</title>
+    <meta name="description" content="2 element overflow in Array when jit compiled">
+    <meta name="keywords" content="writeup, spidermonkey, jit, InCTF">
+    <link rel="canonical" href="http://localhost:4000/ateles/">
+        <!-- Twitter Cards -->
+    <meta name="twitter:title" content="InCTF ateles Write-up">
+    <meta name="twitter:description" content="2 element overflow in Array when jit compiled">
+    <meta name="twitter:site" content="@sherl0ck__">
+    <meta name="twitter:creator" content="@sherl0ck__">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:image" content="http://localhost:4000/assets/img/profile.png">
+    <!-- Open Graph -->
+    <meta property="og:locale" content="en_US">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="InCTF ateles Write-up">
+    <meta property="og:description" content="2 element overflow in Array when jit compiled">
+    <meta property="og:url" content="http://localhost:4000/ateles/">
+    <meta property="og:site_name" content="sherl0ck's home">
+    <meta property="og:image" content="http://localhost:4000/assets/img/profile.png">
+
+    
+    
+    <!-- Handheld -->
+    <meta name="HandheldFriendly" content="True">
+    <meta name="MobileOptimized" content="320">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Favicons -->
+    <link rel="apple-touch-icon-precomposed" sizes="57x57" href="http://localhost:4000/assets/img/favicon/apple-touch-icon-57x57.png" />
+<link rel="apple-touch-icon-precomposed" sizes="114x114" href="http://localhost:4000/assets/img/favicon/apple-touch-icon-114x114.png" />
+<link rel="apple-touch-icon-precomposed" sizes="72x72" href="http://localhost:4000/assets/img/favicon/apple-touch-icon-72x72.png" />
+<link rel="apple-touch-icon-precomposed" sizes="144x144" href="http://localhost:4000/assets/img/favicon/apple-touch-icon-144x144.png" />
+<link rel="icon" type="image/png" href="http://localhost:4000/assets/img/favicon/favicon.png" />
+<link rel="shortcut icon" href="http://localhost:4000/assets/img/favicon/favicon.png" />
+
+    <!-- Feed -->
+    <link rel="alternate" type="application/rss+xml" title="sherl0ck's home" href="http://localhost:4000/feed.xml" />
+    <!-- CSS -->
+    <link rel="stylesheet" type="text/css" href="http://localhost:4000/assets/css/main.css">
+</head>
+
+  <body>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script type="text/javascript">
+      $(function() {
+        i = 0;
+        $('.menuAc').css({
+          'color': 'rgba(52, 152, 219, 1)'
+        });
+        $('.menuAc').click(function(){
+          $(this).next('.menuMobil').animate({width:'toggle'},350);
+          if (i%2==0) {
+            $('.footer').css({
+              'filter'         : 'blur(5px)'
+            });
+            $('.yazilar').css({
+              'filter'         : 'blur(5px)'
+            });
+            $('.ust').css({
+              'filter'         : 'blur(5px)'
+            });
+            $('ul.menu').css({
+              'animation-duration': '0.1s'
+            });
+            i++;
+          }
+          else {
+            $('.footer').css({
+              'filter'         : 'blur(0px)'
+            });
+            $('.yazilar').css({
+              'filter'         : 'blur(0px)'
+            });
+            $('.ust').css({
+              'filter'         : 'blur(0px)'
+            });
+            i++;
+          }
+
+        });
+      });
+    </script>
+
+    <div class="menuAc">
+      <i class="fa fa-bars" aria-hidden="true"></i>
+    </div>
+    <div class="menuMobil">
+          <nav class="nav-home">
+      <ul class="menu">
+            
+				    
+				    <li><a class="link" href="http://localhost:4000/" >Home</a></li>
+				
+				    
+				    <li><a class="link" href="http://localhost:4000/blog/" >Blog</a></li>
+				
+				    
+				    <li><a class="link" href="http://localhost:4000/projects/" >Projects</a></li>
+				
+				    
+				    <li><a class="link" href="http://localhost:4000/about/" >About</a></li>
+				
+				    
+				    <li><a class="link" href="http://localhost:4000/resume.pdf" >Resume</a></li>
+				
+        </ul>
+    </nav>
+
+    </div>
+    <!-- <div class="sidenav"> -->
+    <!-- </div> -->
+
+    <!-- <div class="asdf"> -->
+    <div class="ust">
+      <div class="ortalaAna">
+        <div class="baslikAna">
+          sherl0ck's home
+        </div>
+
+        <div class="pc">
+              <nav class="nav">
+        <ul class="menuAna">
+            
+				    
+				    <li class="item"><a class="link" href="http://localhost:4000/" >Home</a></li>
+				
+				    
+				    <li class="item"><a class="link" href="http://localhost:4000/blog/" >Blog</a></li>
+				
+				    
+				    <li class="item"><a class="link" href="http://localhost:4000/projects/" >Projects</a></li>
+				
+				    
+				    <li class="item"><a class="link" href="http://localhost:4000/about/" >About</a></li>
+				
+				    
+				    <li class="item"><a class="link" href="http://localhost:4000/resume.pdf" >Resume</a></li>
+				
+        </ul>
+    </nav>
+
+        </div>
+      </div>
+    </div>
+  <!-- </div> -->
+
+    <div class="ortalaAna">
+      <div class="yazilar">
+        <div class="yazi">
+          <div class="ustr">
+            <h2>InCTF ateles Write-up</h2>
+            <div class="yazibilgisi">
+              04 Oct 2019
+            </div>
+
+          </div>
+          <hr>
+          <div class="content">
+            <div class="entry">
+            <div class=".post-tag">
+              
+              <i class="fa fa-tags" float=right></i>
+              
+              <a href="/blog/tag/#writeup"   class="post-tag">writeup</a>
+              
+              <a href="/blog/tag/#spidermonkey"   class="post-tag">spidermonkey</a>
+              
+              <a href="/blog/tag/#jit"   class="post-tag">jit</a>
+              
+              <a href="/blog/tag/#inctf"   class="post-tag">InCTF</a>
+              
+              
+            </div>
+
+            <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
+
+            <!-- <div class="sidenav"> -->
+            <!-- <div class="notice"> -->
+
+            <nav class="toc">
+            <header>
+            <h2 class="nav__title">
+            <i class="fas fa-file-alt"> Contents</i>
+            </h2>
+            </header>
+            <!-- <div id="markdown-toc"> -->
+            <ul>
+  <li><a href="#attachments">Attachments</a></li>
+  <li><a href="#vulnerability">Vulnerability</a>
+    <ul>
+      <li><a href="#analyzing-the-patch">Analyzing the patch</a></li>
+      <li><a href="#poc">PoC</a></li>
+    </ul>
+  </li>
+  <li><a href="#exploitation">Exploitation</a></li>
+</ul>
+
+            <!-- </div> -->
+            </nav>
+            <!-- </div> -->
+            <p>About a couple of weeks ago, teambi0s conducted InCTF, an International level CTF and I had the opportunity to create a couple of challenges - <code class="highlighter-rouge">ateles</code> and <code class="highlighter-rouge">navarint</code>. <code class="highlighter-rouge">ateles </code>. Now let’s delve into <code class="highlighter-rouge">ateles</code>!</p>
+
+<h2 id="attachments">Attachments</h2>
+
+<p>There were 2 files provided - <code class="highlighter-rouge">ateles_handout.zip</code> and <code class="highlighter-rouge">ateles_handout_large.zip</code>.</p>
+
+<p>The <code class="highlighter-rouge">ateles_handout_large</code> contains a non-debug js shell built with the provided patch, and also the environment the challenge is running on, in the remote server.</p>
+
+<p>On the remote server sandbox was disabled. Also, <code class="highlighter-rouge">javascript.options.ion.offthread_compilation</code> is set to false, to increase the realibility of exploits. These settings can be tweaked in the <code class="highlighter-rouge">docker_stuff/firefox/vulnProfile/prefs.js</code> file. The built firefox browser runs with the <code class="highlighter-rouge">vulnProfile</code> profile. (<code class="highlighter-rouge">docker_stuff/firefox/vulnProfile
+</code>)</p>
+
+<p>The <code class="highlighter-rouge">ateles_handout.zip</code> contains the patch file that is to be applied.</p>
+
+<h2 id="vulnerability">Vulnerability</h2>
+
+<h3 id="analyzing-the-patch">Analyzing the patch</h3>
+
+<p>The patch file is pretty short</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">diff</span> <span class="o">-</span><span class="n">r</span> <span class="mi">3</span><span class="n">d02a4c69a81</span> <span class="n">js</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">jit</span><span class="o">/</span><span class="n">CodeGenerator</span><span class="p">.</span><span class="n">cpp</span>
+<span class="o">---</span> <span class="n">a</span><span class="o">/</span><span class="n">js</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">jit</span><span class="o">/</span><span class="n">CodeGenerator</span><span class="p">.</span><span class="n">cpp</span>      <span class="n">Thu</span> <span class="n">Sep</span> <span class="mi">19</span> <span class="mo">06</span><span class="o">:</span><span class="mi">59</span><span class="o">:</span><span class="mi">14</span> <span class="mi">2019</span> <span class="o">+</span><span class="mo">0300</span>
+<span class="o">+++</span> <span class="n">b</span><span class="o">/</span><span class="n">js</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">jit</span><span class="o">/</span><span class="n">CodeGenerator</span><span class="p">.</span><span class="n">cpp</span>      <span class="n">Fri</span> <span class="n">Sep</span> <span class="mi">20</span> <span class="mi">15</span><span class="o">:</span><span class="mi">35</span><span class="o">:</span><span class="mo">07</span> <span class="mi">2019</span> <span class="o">+</span><span class="mo">0530</span>
+<span class="err">@@</span> <span class="o">-</span><span class="mi">9177</span><span class="p">,</span><span class="mi">7</span> <span class="o">+</span><span class="mi">9177</span><span class="p">,</span><span class="mi">9</span> <span class="err">@@</span>
+ <span class="kt">void</span> <span class="n">CodeGenerator</span><span class="o">::</span><span class="n">visitInitializedLength</span><span class="p">(</span><span class="n">LInitializedLength</span><span class="o">*</span> <span class="n">lir</span><span class="p">)</span> <span class="p">{</span>
+   <span class="n">Address</span> <span class="n">initLength</span><span class="p">(</span><span class="n">ToRegister</span><span class="p">(</span><span class="n">lir</span><span class="o">-&gt;</span><span class="n">elements</span><span class="p">()),</span>
+                      <span class="n">ObjectElements</span><span class="o">::</span><span class="n">offsetOfInitializedLength</span><span class="p">());</span>
+<span class="o">-</span>  <span class="n">masm</span><span class="p">.</span><span class="n">load32</span><span class="p">(</span><span class="n">initLength</span><span class="p">,</span> <span class="n">ToRegister</span><span class="p">(</span><span class="n">lir</span><span class="o">-&gt;</span><span class="n">output</span><span class="p">()));</span>
+<span class="o">+</span>  <span class="n">Register</span> <span class="n">out</span> <span class="o">=</span> <span class="n">ToRegister</span><span class="p">(</span><span class="n">lir</span><span class="o">-&gt;</span><span class="n">output</span><span class="p">());</span>
+<span class="o">+</span>  <span class="n">masm</span><span class="p">.</span><span class="n">load32</span><span class="p">(</span><span class="n">initLength</span><span class="p">,</span> <span class="n">out</span><span class="p">);</span>
+<span class="o">+</span>  <span class="n">masm</span><span class="p">.</span><span class="n">addq</span><span class="p">(</span><span class="n">Imm32</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span> <span class="n">out</span><span class="p">);</span>
+ <span class="p">}</span>
+
+ <span class="kt">void</span> <span class="n">CodeGenerator</span><span class="o">::</span><span class="n">visitSetInitializedLength</span><span class="p">(</span><span class="n">LSetInitializedLength</span><span class="o">*</span> <span class="n">lir</span><span class="p">)</span> <span class="p">{</span>
+</code></pre></div></div>
+
+<p>The function’s in <code class="highlighter-rouge">CodeGenerator.cpp</code> are called when Ion tries to JIT compile code and wants to look up how a specific piece/segment of code is to be compiled.</p>
+
+<p>In this case the patched code is a part of the function <code class="highlighter-rouge">visitInitializedLength</code>. This is called when trying to JIT compile a segment of code that accesses the initialized length of an Array. For example while compiling the following code snippet :</p>
+
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">arr</span><span class="p">[</span><span class="nx">idx</span><span class="p">]</span> <span class="o">=</span> <span class="mi">12</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>While trying to compile this code, first the index (idx) is checked against the initialized length to verify that it is smaller than it. The code for this is emitted by the function <code class="highlighter-rouge">visitInitializedLength</code>. As we can see, initially all it did was to load the initialised length into a register. In the patch the initialized length is loaded into the register and then <code class="highlighter-rouge">2</code> is added to the register. Thus, now when the JIT’ed code is executed, the index will be checked against the initialized length plus 2, thus giving us access to 2 more elements than what the <code class="highlighter-rouge">initializedLength</code> field of the Array specifies.</p>
+
+<h3 id="poc">PoC</h3>
+
+<p>Ok, that was straightforward, but how can we trigger a crash with this? Well, the easiest (and only one I could think of :)) way I found was to use this 2 element overflow to overwrite the <code class="highlighter-rouge">group</code> and <code class="highlighter-rouge">shape</code> field of the <code class="highlighter-rouge">JSObject</code> that follows the vulnerable <code class="highlighter-rouge">Array</code>. Here is a crashing sample</p>
+
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">blah</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Array</span><span class="p">()</span>
+<span class="nx">blah</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="k">new</span> <span class="nb">Array</span><span class="p">(</span><span class="mf">1.1</span><span class="p">,</span><span class="mf">1.1</span><span class="p">))</span>
+<span class="nx">blah</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="k">new</span> <span class="nb">Uint32Array</span><span class="p">(</span><span class="mh">0x10</span><span class="p">))</span>
+
+<span class="kd">function</span> <span class="nx">trigger</span><span class="p">(</span><span class="nx">a1</span><span class="p">,</span><span class="nx">a2</span><span class="p">){</span>
+  <span class="nx">blah</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="nx">a1</span><span class="p">]</span><span class="o">=</span><span class="mf">1.337</span><span class="p">;</span>
+  <span class="k">for</span> <span class="p">(</span><span class="kd">let</span> <span class="nx">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="nx">i</span><span class="o">&lt;</span><span class="mi">100000</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">){}</span>
+<span class="p">}</span>
+
+<span class="k">for</span><span class="p">(</span><span class="kd">var</span> <span class="nx">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="nx">i</span><span class="o">&lt;</span><span class="mi">100</span><span class="p">;</span><span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="nx">trigger</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="nx">trigger</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="nx">blah</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+</code></pre></div></div>
+
+<p>Here we first create a Array that holds 2 objects, namely another Array and also a <code class="highlighter-rouge">Uint32Array</code>. These are allocated one after other in the nursery heap (firefox’s primary heap for short lived objects).</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+gef➤ x/10xg 0x28a7da500550  &lt;<span class="nt">--</span> <span class="sb">`</span>blah<span class="sb">`</span> Array
+
+0x28a7da500550: 0x00002d73b8b7e820      0x00002d73b8b8fba0
+0x28a7da500560: 0x0000000000000000      0x000028a7da500580
+0x28a7da500570: 0x0000000200000000      0x0000000200000006
+0x28a7da500580: 0xfffe28a7da5005d8 &lt;-+  0xfffe28a7da500618 &lt;<span class="nt">------</span>+
+0x28a7da500590: 0x2f2f2f2f2f2f2f2f   |  0x2f2f2f2f2f2f2f2f        |
+                                     |                            |
+               blah[0] <span class="o">(</span>new Array<span class="o">)</span>   |  blah[1] <span class="o">(</span>new Uint32Array<span class="o">)</span> |
+                          +----------+                            |
+gef➤ x/8xg 0x28a7da5005d8 |                                       |
+0x28a7da5005d8: 0x00002d73b8b7e850      0x00002d73b8b8fba0        |
+0x28a7da5005e8: 0x0000000000000000      0x000028a7da500608        |
+0x28a7da5005f8: 0x0000000200000000      0x0000000200000002        |
+0x28a7da500608: 0x3ff199999999999a      0x3ff199999999999a        |
+gef➤     +--------------------------------------------------------+
+         |
+0x28a7da500618: 0x00002d73b8b7e9d0      0x00002d73b8ba5330 |
+0x28a7da500628: 0x0000000000000000      0x0000564e7c87ff98
+0x28a7da500638: 0xfffa000000000000      0xfff8800000000010
+0x28a7da500648: 0xfff8800000000000      0x000028a7da500658
+</code></pre></div></div>
+
+<p>As is obvious, both the elements lie just one after another. Thus we can use the 2 element overflow in the <code class="highlighter-rouge">blah[0]</code> array to change the group and the shape of the following object, which is the <code class="highlighter-rouge">Uint32Array</code>. In this crashing sample, we overwrite the <code class="highlighter-rouge">group</code> pointer of the <code class="highlighter-rouge">Uint32Array</code> with a float value 1.337 which leads to it becoming an invalid pointer and thus crashing when we try to access this object (When we try to access an object the group and the shape pointers are read which leads to spidermonkey trying to de-reference an invalid pointer)</p>
+
+<h2 id="exploitation">Exploitation</h2>
+
+<p>Right so now that we are clear with what the bug is, we can go ahead and try to achieve arbitrary read-write. With this overflow, we can change the group and shape pointer of any object to that of any other object. So basically we can hijack the identity of an object to make spidermonkey think that it’s of a different type, which gives us the power to create arbitrary type-confusions in the memory.</p>
+
+<p>So now the question is which object should we confuse with which other object to make our job of exploitation easier? After pondering over it for some time I used kind of the same technique that I used while trying to <a href="https://vigneshsrao.github.io/writeup/">exploit CVE-2019-11707</a>. Here I initially create a <code class="highlighter-rouge">Uint8Array</code> and overwrite the <code class="highlighter-rouge">group</code> and <code class="highlighter-rouge">shape</code> to that of a <code class="highlighter-rouge">Uint32Array</code>. Now let’s assume that the size of the <code class="highlighter-rouge">Uint8Array</code> is 16. That means that the size of the buffer will be <code class="highlighter-rouge">16*1=4</code>. Now we overwritet the group and shape to that of <code class="highlighter-rouge">Uint32Array</code>. But here each element is of 4 bytes size. Thus the size of the buffer becomes <code class="highlighter-rouge">16*4=64</code>, giving us a sufficiently large overflow. Thus we converted our 2 element overflow to a larger, more controlled overflow in a typed array!</p>
+
+<p>From here the exploitation can proceed in pretty much the same way as the one in my previous post on <a href="https://vigneshsrao.github.io/writeup/#confusing-uint8array-and-uint32array">CVE-2019-11707</a>. We create an array of array buffer’s and set the underlying buffer of the <code class="highlighter-rouge">Uint8Array</code> (which we will corrupt) to any one of those array buffers. Then with this overflow, we can change the size field of the following array buffer to a larger one which will lead to us getting arbitrary read-write.</p>
+
+<p>After this, the exploitation method is ditto same as the previous post. Please refer the above mentioned post for more details. Let me give a gist of the exploit here -</p>
+
+<ul>
+  <li>Let’s say that we have some consecutive array buffers in the memory - A-B-C-D</li>
+  <li>We use the overflow in ‘A’ to overwrite the length field of ‘B’ array buffer and make it to a large size.</li>
+  <li>We use this to leak the address contained in the metadata of ‘C’.</li>
+  <li>The leaks contain - The address of an TypedArray created on this array buffer and the address of this array buffer.</li>
+  <li>Now we again use the overflow in ‘B’ to overwrite the address of the DataBuffer of ‘C’ to the address of the data buffer of a <code class="highlighter-rouge">Uint8Arry</code> (say <code class="highlighter-rouge">leaker</code>)</li>
+  <li>Now we create a <code class="highlighter-rouge">Uint8Array</code> view on the <code class="highlighter-rouge">C</code> ArrayBuffer. Thus it’s buffer is actually the address of the data buffer of the <code class="highlighter-rouge">leaker</code> array.</li>
+  <li>Thus we control the DataBuffer of the leaker array and can point it to any address to achieve arbitrary read-write.</li>
+</ul>
+
+<p>Now for getting code execution (This is also the same as the previous post but here’s a gist anyway) -</p>
+
+<ul>
+  <li>Our aim will be to overwrite the the <code class="highlighter-rouge">addProperty</code> function pointer in the <code class="highlighter-rouge">ClassOops</code> structure.</li>
+  <li>We will overwrite it with a stager shellcode that will mprotect a second region with rwx permission. This second region will be where we have our actual shellcode.</li>
+  <li>The stager shellcode will be JIT compiled. Thus we place it in a function and call it over and over to jit compile it.</li>
+  <li>We leak the address of this using our arbitrary read primitive.</li>
+  <li>We also write a shellcode for execve(‘/usr/bin/xcalc’,0,0) and also leak it’s address.</li>
+  <li>We then overwrite the <code class="highlighter-rouge">addProperty</code> function pointer with the address of the shellcode.</li>
+  <li>To trigger the chain, we add a property with the value of the property as the address of our actual shellcode buffer.</li>
+  <li>When this happens, the address of the shellcode buffer goes into the <code class="highlighter-rouge">rcx</code> register and our stager shellcode is called.</li>
+  <li>The stager shellcode mprotects the page pointed to by <code class="highlighter-rouge">rcx</code> to make it rwx and then jumps to that region.</li>
+  <li>In the now rwx region, we execute the shellcode for execve(‘/usr/bin/xcalc’,NULL,NULL);</li>
+</ul>
+
+<p>I just copy pasted the code for this whole part directly from my previous exploit. There was only a small change - The previous exploit was written for firefox 66 and the one given in the challenge was the latest version, pulled just a couple of day’s prior to the CTF. Thus there was a slight change in the structure of <code class="highlighter-rouge">ArrayBuffer</code>. Earlier the right shifted value of the data pointer of the ArrayBuffer was in the memory. Now, the data pointer is stored as it is. So only a slight modification is required in the previous exploit.</p>
+
+<p>The full exploit can be found on <a href="https://github.com/vigneshsrao/InCTF/tree/master/pwn2019/ateles/exploit">github</a></p>
+
+<p>After finishing the exploit, we have to host the whole thing (wrapped in a html file) on a server, and send the link to the remote service.</p>
+
+<p><img src="/assets/img/ateles/ateles.png" alt="flag.png" /></p>
+
+<p>And the flag was</p>
+
+<blockquote>
+  <p>inctf{r3sh4ping_th3_ateles_for_sh4ping_up_a_pr0t3le$}</p>
+</blockquote>
+
+
+            <!-- 
+            <a href="/writeup/" title="Write up for CVE-2019-11707" class="btn btn-info">&larr; Previous</a>
+            
+             -->
+            <!-- [ previous](https://github.com/alperenbozkurt/JBlog){: .btn .btn-info} -->
+
+            
+            <div class="PageNavigation">
+              
+                
+                  <a class="previous" href="/writeup/">&laquo; Write up for CVE-2019-11707</a>
+                
+              
+              
+            </div>
+            
+            <div style="clear:both"></div>
+          </div>
+         	</div>
+
+        </div>
+        <script src="http://localhost:4000/assets/js/jquery-1.12.2.min.js"></script>
+<script src="http://localhost:4000/assets/js/jquery.goup.min.js"></script>
+<script type="text/javascript">
+$(document).ready(function(){
+    $.goup({
+        trigger: 500,
+        bottomOffset: 10,
+        locationOffset: 20,
+        containerRadius: 0,
+        containerColor: '#fff',
+        arrowColor: '#000',
+        goupSpeed: 'normal'
+    });
+});
+</script>
+
+<!-- Asynchronous Google Analytics snippet -->
+<script>
+  var _gaq = _gaq || [];
+  var pluginUrl =
+ '//www.google-analytics.com/plugins/ga/inpage_linkid.js';
+  _gaq.push(['_require', 'inpage_linkid', pluginUrl]);
+  _gaq.push(['_setAccount', 'UA-123721864-1']);
+  _gaq.push(['_trackPageview']);
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+
+        
+  <div id="disqus_thread" class="yazi">  </div>
+  <script>
+
+  /**
+  *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+  *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
+  /*
+  var disqus_config = function () {
+  this.page.url = PAGE_URL;  // Replace PAGE_URL with your page's canonical URL variable
+  this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+  };
+  */
+  (function() { // DON'T EDIT BELOW THIS LINE
+  var d = document, s = d.createElement('script');
+  s.src = 'https://sherl0ck.disqus.com/embed.js';
+  s.setAttribute('data-timestamp', +new Date());
+  (d.head || d.body).appendChild(s);
+  })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+  <script id="dsq-count-scr" src="//sherl0ck.disqus.com/count.js" async></script>
+
+
+      </div>
+    </div>
+
+        <div class="footer">
+      <div class="ortalaAna">
+        <div class="copy">
+          sherl0ck's home © 2019
+        </div>
+        <div class="sosyal">
+                        <div class="social-links">
+                  <a href="mailto:vigneshsrao5@gmail.com" class="author-social" target="_blank"><i class="fa fa-2x fa-envelope-square"></i></a>
+                  <a href="http://twitter.com/sherl0ck__" class="author-social" target="_blank"><i class="fa fa-2x fa-twitter-square"></i></a>
+                  
+                  
+                  <a href="http://linkedin.com/in/vigneshsrao" class="author-social" target="_blank"><i class="fa fa-2x fa-linkedin-square"></i></a>
+                  
+                  
+                  
+                  <a href="http://github.com/vigneshsrao" class="author-social" target="_blank"><i class="fa fa-2x fa-github"></i></a>
+                  
+                  
+                  
+                  
+                  
+                  
+                  
+                  
+                  
+                  
+                  
+            </div>
+
+        </div>
+      </div>
+    </div>
+
+  </body>
+</html>
+
+<!-- 
+<i class="previous"><a href="/writeup/" title="Write up for CVE-2019-11707">&larr; Previous</a></i>
+
+
+<li class="next disabled"><a>Next &rarr;</a>
+ -->

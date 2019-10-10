@@ -113,6 +113,10 @@
     </nav>
 
     </div>
+    <!-- <div class="sidenav"> -->
+    <!-- </div> -->
+
+    <!-- <div class="asdf"> -->
     <div class="ust">
       <div class="ortalaAna">
         <div class="baslikAna">
@@ -144,6 +148,8 @@
         </div>
       </div>
     </div>
+  <!-- </div> -->
+
     <div class="ortalaAna">
       <div class="yazilar">
         <div class="yazi">
@@ -161,14 +167,36 @@
               
               <i class="fa fa-tags" float=right></i>
               
-              <a href="blog/tag/#writeup"   class="post-tag">writeup</a>
+              <a href="/blog/tag/#writeup"   class="post-tag">writeup</a>
               
-              <a href="blog/tag/#fastbin"   class="post-tag">fastbin</a>
+              <a href="/blog/tag/#fastbin"   class="post-tag">fastbin</a>
               
-              <a href="blog/tag/#heap"   class="post-tag">heap</a>
+              <a href="/blog/tag/#heap"   class="post-tag">heap</a>
               
               
             </div>
+
+            <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
+
+            <!-- <div class="sidenav"> -->
+            <!-- <div class="notice"> -->
+
+            <nav class="toc">
+            <header>
+            <h2 class="nav__title">
+            <i class="fas fa-file-alt"> Contents</i>
+            </h2>
+            </header>
+            <!-- <div id="markdown-toc"> -->
+            <ul>
+  <li><a href="#vulnerability"><u>Vulnerability</u></a></li>
+  <li><a href="#memory-leaks"><u>Memory Leaks</u></a></li>
+  <li><a href="#the-exploit"><u>The exploit</u></a></li>
+</ul>
+
+            <!-- </div> -->
+            </nav>
+            <!-- </div> -->
             <p>I didn’t get a chance to try this challenge out during the CTF, but it was a pretty interesting and fun challenge. The method I am going to describe may not be the most efficient but this is what came to my mind first.</p>
 
 <p>So let’s get started up with the write-up. First for the mitigations –</p>
@@ -342,6 +370,7 @@ Now to decide what to overwrite – malloc_hook or realloc_hook. realloc_hook ta
 
 <p>Had lots of fun solving this challenge. The CTF itself was pretty good with lots of decent quality challenges. Thanks for reading through!</p>
 
+
             <!-- 
             <a href="/studentdiary/" title="Student Diary" class="btn btn-info">&larr; Previous</a>
             
@@ -450,7 +479,7 @@ $(document).ready(function(){
         <div class="footer">
       <div class="ortalaAna">
         <div class="copy">
-          sherl0ck's home © 2018
+          sherl0ck's home © 2019
         </div>
         <div class="sosyal">
                         <div class="social-links">
