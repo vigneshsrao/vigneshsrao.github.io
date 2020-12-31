@@ -2,9 +2,9 @@
 
 <feed xmlns="http://www.w3.org/2005/Atom">
   <id>http://localhost:4000</id>
-  <title>sherl0cks home</title>
+  <title>sherl0ck's home</title>
   <subtitle>A minimal, portfolio, sidebar, bootstrap Jekyll theme with responsive web design and focuses on text presentation.</subtitle>
-  <updated>2020-12-31T20:36:37+05:30</updated>
+  <updated>2020-12-31T21:28:47+05:30</updated>
   <author>
     <name>Vignesh S Rao</name>
     <uri>http://localhost:4000</uri>
