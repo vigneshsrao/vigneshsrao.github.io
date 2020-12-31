@@ -4,7 +4,7 @@
   <id>http://localhost:4000</id>
   <title>sherl0cks home</title>
   <subtitle>A minimal, portfolio, sidebar, bootstrap Jekyll theme with responsive web design and focuses on text presentation.</subtitle>
-  <updated>2020-12-31T20:05:53+05:30</updated>
+  <updated>2020-12-31T20:36:37+05:30</updated>
   <author>
     <name>Vignesh S Rao</name>
     <uri>http://localhost:4000</uri>
@@ -23,7 +23,7 @@
     <link href="http://localhost:4000/posts/ateles/" rel="alternate" type="text/html" title="InCTF ateles Write-up" />
     <published>2019-10-04T00:00:00+05:30</published>
   
-    <updated>2019-10-04T00:00:00+05:30</updated>
+    <updated>2020-12-31T20:26:34+05:30</updated>
   
     <id>http://localhost:4000/posts/ateles/</id>
     <content src="http://localhost:4000/posts/ateles/" />
@@ -65,7 +65,7 @@ The ateles_handout_large contains a non-debug js shell built with the provided p
     <link href="http://localhost:4000/posts/writeup/" rel="alternate" type="text/html" title="Write up for CVE-2019-11707" />
     <published>2019-08-15T00:00:00+05:30</published>
   
-    <updated>2019-08-15T00:00:00+05:30</updated>
+    <updated>2020-12-31T20:26:34+05:30</updated>
   
     <id>http://localhost:4000/posts/writeup/</id>
     <content src="http://localhost:4000/posts/writeup/" />
@@ -101,7 +101,7 @@ The ateles_handout_large contains a non-debug js shell built with the provided p
     <link href="http://localhost:4000/posts/workflow/" rel="alternate" type="text/html" title="SpiderMonkey Workflow Setup" />
     <published>2019-08-10T00:00:00+05:30</published>
   
-    <updated>2019-08-10T00:00:00+05:30</updated>
+    <updated>2020-12-31T20:26:34+05:30</updated>
   
     <id>http://localhost:4000/posts/workflow/</id>
     <content src="http://localhost:4000/posts/workflow/" />
@@ -144,7 +144,7 @@ My favorite editor is Atom and I use the ccls language-server to go through the 
     <link href="http://localhost:4000/posts/play-with-spidermonkey/" rel="alternate" type="text/html" title="Playing around with SpiderMonkey" />
     <published>2019-01-09T00:00:00+05:30</published>
   
-    <updated>2019-01-09T00:00:00+05:30</updated>
+    <updated>2020-12-31T20:26:34+05:30</updated>
   
     <id>http://localhost:4000/posts/play-with-spidermonkey/</id>
     <content src="http://localhost:4000/posts/play-with-spidermonkey/" />
@@ -182,7 +182,7 @@ Anyway, for the past few days I was trying blazefox from blazeCTF 2018. In ...
     <link href="http://localhost:4000/posts/babytcache/" rel="alternate" type="text/html" title="HITCON CTF: baby_tcache Writeup" />
     <published>2018-10-25T00:00:00+05:30</published>
   
-    <updated>2018-10-25T00:00:00+05:30</updated>
+    <updated>2020-12-31T20:26:34+05:30</updated>
   
     <id>http://localhost:4000/posts/babytcache/</id>
     <content src="http://localhost:4000/posts/babytcache/" />

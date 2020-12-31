@@ -27,7 +27,7 @@ the duration of my bachelors studies. Check out our [team blog](https://blog.bi0
 
 * [Twitter](https://twitter.com/sherl0ck__) - @sherl0ck__ 
 * [GitHub](https://github.com/vigneshsrao) - vigneshsrao
-* [Linked In](www.linkedin.com/in/vigneshsrao)
+* [Linked In](https://www.linkedin.com/in/vigneshsrao)
 * Email - vigneshsrao5 \<at\> gmail \<dot\> com
 
 

