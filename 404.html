@@ -1,7 +1,34 @@
 ---
+# The 404 page
+# v2.0
+# https://github.com/cotes2020/jekyll-theme-chirpy
+# © 2017-2019 Cotes Chung
+# MIT License
 layout: page
-title: "404 Not Found"
-permalink: /404
+title: "404: Page not found"
+permalink: /404.html
+
+redirect_from:  # part of site.sitemap_exclude
+  - /norobots/
+  - /assets/
+  - /tabs/
+  - /categories/
+  - /tags/
+  - /posts/
+
+dynamic_title: true
 ---
-<p>There doesn't appear to be anything here. Sorry about that.</p>
-<p>If you've followed a link expecting something to be here, you can <a href="mailto:{{ site.email }}?subject=Page%20not%20found">contact me</a>.</p>
+
+<h2> Note </h2>
+
+<p> Due to change in jekyll theme, the url to certain posts may have changed
+<br>For <i>example, https://vigneshsrao.github.io/writeup/ </i>    changed to  <br>
+<a href="https://vigneshsrao.github.io/posts/writeup">https://vigneshsrao.github.io/posts/writeup/</a>
+
+<p> You may search it on the <a href="{{ site.baseurl }}/tabs/archives">Archives page</a>.</p>
+
+
+<div class="lead">
+  <p>Sorry, we've misplaced that URL or it's pointing to something that doesn't exist. </p>
+  <p><a href="{{ site.baseurl }}/">Head back Home</a> to try finding it again, or search for it on the <a href="{{ site.baseurl }}/tabs/archives">Archives page</a>.</p>
+</div>

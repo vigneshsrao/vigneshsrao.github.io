@@ -1,176 +1,144 @@
-<!DOCTYPE html>
-<html>
-  {% include head.html %}
-  <body>
-    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-    <script type="text/javascript">
-      $(function() {
-        i = 0;
-        $('.menuAc').css({
-          'color': 'rgba(52, 152, 219, 1)'
-        });
-        $('.menuAc').click(function(){
-          $(this).next('.menuMobil').animate({width:'toggle'},350);
-          if (i%2==0) {
-            $('.footer').css({
-              'filter'         : 'blur(5px)'
-            });
-            $('.yazilar').css({
-              'filter'         : 'blur(5px)'
-            });
-            $('.ust').css({
-              'filter'         : 'blur(5px)'
-            });
-            $('ul.menu').css({
-              'animation-duration': '0.1s'
-            });
-            i++;
-          }
-          else {
-            $('.footer').css({
-              'filter'         : 'blur(0px)'
-            });
-            $('.yazilar').css({
-              'filter'         : 'blur(0px)'
-            });
-            $('.ust').css({
-              'filter'         : 'blur(0px)'
-            });
-            i++;
-          }
+---
+layout: default
+# The posts' layout
+# v2.0
+# https://github.com/cotes2020/jekyll-theme-chirpy
+# © 2017-2019 Cotes Chung
+# MIT Licensed
+---
 
-        });
-      });
-    </script>
+<div class="row">
 
-    <div class="menuAc">
-      <i class="fa fa-bars" aria-hidden="true"></i>
-    </div>
-    <div class="menuMobil">
-      {% include nav-home.html %}
-    </div>
-    <!-- <div class="sidenav"> -->
-    <!-- </div> -->
+  <div id="post-wrapper" class="col-12 col-lg-11 col-xl-8">
 
-    <!-- <div class="asdf"> -->
-    <div class="ust">
-      <div class="ortalaAna">
-        <div class="baslikAna">
-          {{ site.title }}
+    <div class="post pl-1 pr-1 pl-sm-2 pr-sm-2 pl-md-4 pr-md-4">
+
+      <h1 data-toc-skip>{{ page.title }}</h1>
+
+      <div class="post-meta text-muted d-flex flex-column">
+        <!-- Published date and author -->
+        <div>
+          {% include timeago.html date=page.date tooltip=true %}
+          by
+          <span class="author">
+            {{ page.author | default: site.author }}
+          </span>
         </div>
 
-        <div class="pc">
-          {% include nav.html %}
+        <div>
+          <!-- lastmod -->
+          {% if page.last_modified_at %}
+          <span>
+            Updated
+            {% include timeago.html date=page.last_modified_at class="lastmod" tooltip=true %}
+          </span>
+          {% endif %}
+
+          <!-- read time -->
+          {% include read-time.html content=content %}
+
+          <!-- page views -->
+          {% if site.google_analytics.pv.enabled %}
+          <span id="pv" class="pageviews"><i class="fas fa-spinner fa-spin fa-fw"></i></span>
+          {% endif %}
+
         </div>
+
+      </div> <!-- .post-meta -->
+
+      <div class="post-content">
+        {%- capture img_placehodler -%}
+          data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7
+        {%- endcapture -%}
+
+        {% if page.image %}
+          <img src="{{ img_placehodler }}" data-src="{{ page.image }}" class="preview-img">
+        {% endif %}
+
+        <!-- Using lozad. See: <https://github.com/ApoorvSaxena/lozad.js#usage> -->
+        {% if content contains '<img src=' %}
+          {% assign replacement = '<img src="' | append: img_placehodler | append: '" data-src=' %}
+          {{ content | replace: '<img src=', replacement }}
+        {% else %}
+          {{ content }}
+        {% endif %}
       </div>
-    </div>
-  <!-- </div> -->
 
-    <div class="ortalaAna">
-      <div class="yazilar">
-        <div class="yazi">
-          <div class="ustr">
-            <h2>{{ page.title }}</h2>
-            <div class="yazibilgisi">
-              {{ page.date | date_to_string }}
-            </div>
+      <div class="post-tail-wrapper text-muted">
 
-          </div>
-          <hr>
-          <div class="content">
-            <div class="entry">
-            <div class=".post-tag">
-              {% if page.tags %}
-              <i class="fa fa-tags" float=right></i>
-              {% for tag in page.tags %}
-              <a href="{{ site.baseurl }}{{ site.tag_page }}#{{ tag | slugify }}"   class="post-tag">{{ tag }}</a>
-              {% endfor %}
-              {% endif %}
-            </div>
-
-            <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
-
-            <!-- <div class="sidenav"> -->
-            <!-- <div class="notice"> -->
-
-            <nav class="toc">
-            <header>
-            <h2 class="nav__title">
-            <i class="fas fa-file-alt"> Contents</i>
-            </h2>
-            </header>
-            <!-- <div id="markdown-toc"> -->
-            {% include toc.html html=content %}
-            <!-- </div> -->
-            </nav>
-            <!-- </div> -->
-            {{ content }}
-
-            <!-- {% if page.previous %}
-            <a href="{{ site.BASE_PATH }}{{ page.previous.url }}" title="{{ page.previous.title }}" class="btn btn-info">&larr; Previous</a>
-            {% endif %}
-            {% if page.next %}
-            <a href="{{ site.BASE_PATH }}{{ page.next.url }}" title="{{ page.previous.title }}" class="btn btn-info" style="float: right;">Next &rarr;</a>
-            {% endif %} -->
-            <!-- [ previous](https://github.com/alperenbozkurt/JBlog){: .btn .btn-info} -->
-
-            {% if page.project == null %}
-            <div class="PageNavigation">
-              {% if page.previous.url %}
-                {% if page.previous.project == null %}
-                  <a class="previous" href="{{page.previous.url}}">&laquo; {{page.previous.title}}</a>
-                {% else %}
-                  {% assign temp=page.previous %}
-                  {% for t in (0..10) %}
-                    {% if temp.project == null %}
-                      {% break %}
-                    {% endif %}
-                    {% assign temp=temp.previous %}
-                  {% endfor %}
-                  {% if temp != null %}
-                    <a class="previous" href="{{temp.url}}">&laquo; {{temp.title}}</a>
-                  {% endif %}
-                {% endif %}
-              {% endif %}
-              {% if page.next.url %}
-                {% if page.next.project == null %}
-                  <a class="next" href="{{page.next.url}}">{{page.next.title}} &raquo;</a>
-                {% else %}
-                  {% assign temp=page.next %}
-                  {% for t in (0..10) %}
-                    {% if temp.project == null %}
-                      {% break %}
-                    {% endif %}
-                    {% assign temp=temp.next %}
-                  {% endfor %}
-                  {% if temp !=null %}
-                    <a class="next" href="{{temp.url}}">{{temp.title}} &raquo;</a>
-                  {% endif %}
-                {% endif %}
-              {% endif %}
-            </div>
-            {% endif %}
-            <div style="clear:both"></div>
-          </div>
-         	</div>
-
+        <!-- categories -->
+        {% if page.categories.size > 0 %}
+        <div class="post-meta mb-3">
+          <i class="far fa-folder-open fa-fw mr-1"></i>
+          {% for category in page.categories %}
+            <a href='{{ site.baseurl }}/categories/{{ category | slugify | url_encode }}/'>{{ category }}</a>
+            {%- unless forloop.last -%}, {%- endunless -%}
+          {% endfor %}
         </div>
-        {% include scripts.html %}
-        {% include disqus_comments.html %}
-      </div>
-    </div>
+        {% endif %}
 
-    {% include footer.html %}
-  </body>
-</html>
+        <!-- tags -->
+        {% if page.tags.size > 0 %}
+        <div class="post-tags">
+          <i class="fa fa-tags fa-fw mr-1"></i>
+          {% for tag in page.tags %}
+          <a href="{{ site.baseurl }}/tags/{{ tag | slugify | url_encode }}/"
+            class="post-tag no-text-decoration" >
+            {{- tag -}}
+          </a>
+          {% endfor %}
+          </div>
+        {% endif %}
 
-<!-- {% if page.previous %}
-<i class="previous"><a href="{{ site.BASE_PATH }}{{ page.previous.url }}" title="{{ page.previous.title }}">&larr; Previous</a></i>
-{% else %}
-<li class="previous disabled"><a>&larr; Previous</a></li>
-{% endif %}
-{% if page.next %}
-<i class="next"><a href="{{ site.BASE_PATH }}{{ page.next.url }}" title="{{ page.next.title }}">Next &rarr;</a></i>
-{% else %}
-<li class="next disabled"><a>Next &rarr;</a>
-{% endif %} -->
+        <div class="post-tail-bottom
+          d-flex justify-content-between align-items-center mt-3 pt-5 pb-2">
+          {% if site.data.rights.license %}
+          <div class="license-wrapper">
+            This post is licensed under
+            <a href="{{ site.data.rights.license.link }}">{{ site.data.rights.license.name }}</a>
+            by the author.
+          </div>
+          {% endif %}
+
+          {% include post-sharing.html %}
+
+        </div><!-- .post-tail-bottom -->
+
+      </div><!-- div.post-tail -->
+
+    </div> <!-- .post -->
+
+
+  </div> <!-- #post-wrapper -->
+
+  {% assign enable_toc = false %}
+
+  {% if site.toc and page.toc %}
+    {% if content contains '<h2' or content contains '<h3' %}
+      {% assign enable_toc = true %}
+    {% endif %}
+  {% endif %}
+
+  {% include panel.html toc=enable_toc %}
+
+</div> <!-- .row -->
+
+<div class="row">
+  <div class="col-12 col-lg-11 col-xl-8">
+    <div id="post-extend-wrapper" class="pl-1 pr-1 pl-sm-2 pr-sm-2 pl-md-4 pr-md-4">
+
+    {% include related-posts.html %}
+
+    {% include post-nav.html %}
+
+    {% if site.disqus.comments and page.comments %}
+      {% include disqus.html %}
+    {% endif %}
+
+    </div> <!-- #post-extend-wrapper -->
+
+  </div> <!-- .col-* -->
+
+</div> <!-- .row -->
+
+{% include lozad.html %}

@@ -4,6 +4,7 @@ title: "HITCON CTF: baby_tcache Writeup"
 date: 2018-10-25
 excerpt: "Allocate chunk in stdout->_flags and partial overwrite _IO_write_base to get leak."
 tags: [writeup, tcache, heap, filestructure]
+category: [CTF_writeup, Exploitation]
 description: Sample placeholder post.
 ---
 

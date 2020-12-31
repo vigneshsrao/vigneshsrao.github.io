@@ -1,9 +1,9 @@
 ---
-layout: "post"
 title: "Playing around with SpiderMonkey"
 date: 2019-01-09
 excerpt: "Some random notes about Mozilla's JavaScript engine"
 tags: [js engine, browser, spidermonkey]
+category: [Notes, Browser Exploitation]
 description:
 ---
 
