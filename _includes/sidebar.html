@@ -30,7 +30,7 @@
 
   <ul class="w-100">
     <!-- home -->
-    <li class="nav-item{% if page.layout == 'asdf' %}{{ " active" }}{% endif %}">
+    <li class="nav-item{% if page.layout == 'home' %}{{ " active" }}{% endif %}">
       <a href="{{ '/' | relative_url }}" class="nav-link">
         <i class="fa-fw fas fa-home ml-xl-3 mr-xl-3 unloaded"></i>
         <span>{{ "HOME" }}</span>
@@ -39,20 +39,28 @@
     <!-- the real tabs -->
     {% for tab in site.tabs %}
     <li class="nav-item{% if tab.url == page.url %}{{ " active" }}{% endif %}">
-      <a href="{{ tab.url | relative_url }}" class="nav-link">
+      <a href="{% if tab.title == 'resume' %}{{ "/resume.pdf" }}{% else %}{{ tab.url | relative_url }}{% endif %}" class="nav-link">
         <i class="fa-fw {{ tab.icon }} ml-xl-3 mr-xl-3 unloaded"></i>
-        <span>{{ tab.title | upcase }}</span>
+        <span>{{tab.title | upcase }}</span>
       </a>
     </li> <!-- .nav-item -->
     {% endfor %}
 
 
-    <li class="nav-item{% if page.layout == 'home' %}{{ " active" }}{% endif %}">
-      <a href="{{ '/resume.pdf' }}" class="nav-link">
-        <i class="fa-fw fas fa-home ml-xl-3 mr-xl-3 unloaded"></i>
-        <span>{{ "RESUME" }}</span>
-      </a>
-    </li>
+    <!-- {% for tab in site.tabs %} -->
+    <!-- <li class="nav-item{% if tab.url == page.url %}{{ " active" }}{% endif %}"> -->
+    <!--   <a href="{{ tab.url | relative_url }}" class="nav-link"> -->
+    <!--     <i class="fa-fw {{ tab.icon }} ml-xl-3 mr-xl-3 unloaded"></i> -->
+    <!--     <span>{{ tab.title | upcase }}</span> -->
+    <!--   </a> -->
+    <!-- </li> <\!-- .nav-item -\-> -->
+    <!-- {% endfor %} -->
+    <!-- <li class="nav-item"> -->
+    <!--   <a href="{{ '/resume.pdf' }}" class="nav-link"> -->
+    <!--     <i class="fa-fw fas fa-home ml-xl-3 mr-xl-3 unloaded"></i> -->
+    <!--     <span>{{ "RESUME" }}</span> -->
+    <!--   </a> -->
+    <!-- </li> -->
 
   </ul> <!-- ul.nav.flex-column -->
 
