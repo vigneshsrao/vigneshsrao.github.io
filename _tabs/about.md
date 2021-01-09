@@ -23,11 +23,14 @@ Computer Science and Engineering.
 I have been playing CTFs with [teambi0s](https://bi0s.in/) since 2017 and have been a CTF junkie for
 the duration of my bachelors studies. Check out our [team blog](https://blog.bi0s.in/) for more CTF writeups.
 
+If you have any suggestions, corrections or any general feedback on any posts or
+just want to say hello, feel free to DM me on [Twitter](https://twitter.com/sherl0ck__).
+
 ## Find me on
 
 * [Twitter](https://twitter.com/sherl0ck__) - @sherl0ck__ 
 * [GitHub](https://github.com/vigneshsrao) - vigneshsrao
 * [Linked In](https://www.linkedin.com/in/vigneshsrao)
-* Email - vigneshsrao5 \<at\> gmail \<dot\> com
+* Email - vigneshsrao5[at]gmail[dot]com
 
 
